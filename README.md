@@ -1,11 +1,13 @@
 # Student Depression Risk Prediction System
 
-A machine learning project I built to predict the risk of depression
-in students based on lifestyle and academic factors like sleep, study
-hours, and stress levels.
+A machine learning project I built that tries to predict depression
+risk in students from things like sleep, study hours, and stress.
+Along with the predicted probability the app also shows a short,
+risk-level-aware advice message — so it's not just a number, you
+also get a small bit of guidance.
 
-It has a desktop GUI for entering inputs and a small REST API so the
-same model can be called from outside.
+There's a desktop GUI for entering inputs, and a small REST API so the
+same model can be called from somewhere else (or from a container).
 
 ## Preview
 
@@ -13,14 +15,21 @@ same model can be called from outside.
 
 ## How it works
 
-The user fills in 10 fields. The inputs are encoded and scaled, three
-interaction features are added on top, and everything is passed
-through a small neural network (3 fully connected layers, dropout 0.3).
-The output is a probability and a risk level — low (<40%), moderate
-(40-70%), or high (>=70%).
+You fill in 10 fields. The inputs get one-hot encoded and scaled, I
+add three interaction features on top of the numerical ones, and the
+whole thing goes through a small neural net (3 fully connected layers
+with dropout 0.3). The output is a probability and a risk bucket —
+low (<40%), moderate (40-70%), or high (>=70%).
 
-Training uses the Adam optimizer with a learning-rate scheduler and
-early stopping on the training loss.
+The GUI doesn't just dump a number at you — based on the risk bucket
+it also shows a short, colour-coded message with simple advice (sleep
+schedule, exercise, talking to someone, etc.). For high risk it
+specifically suggests reaching out to a counsellor or therapist. The
+messages live in `RESULT_DISPLAY` in `src/GUI.py` if you want to
+tweak them.
+
+For training I use Adam with a learning-rate scheduler and early
+stopping on the training loss.
 
 Built with PyTorch, scikit-learn, customtkinter, and FastAPI.
 
@@ -55,9 +64,12 @@ On a 20% held-out test split:
 | F1 | 0.87 | 0.87 |
 | ROC-AUC | 0.92 | 0.92 |
 
-Honest observation: a plain logistic regression on the same features
-performs about as well as the neural net here. The dataset is mostly
-linearly separable, so the extra capacity of the NN doesn't help much.
+One thing I noticed while testing: a plain logistic regression on the
+same features does basically as well as the neural net. The dataset
+seems mostly linearly separable, so the deeper model doesn't really
+buy much here. I kept the NN anyway since the project is about
+learning, but the LR baseline is in `src/evaluate.py` so you can see
+the comparison yourself.
 
 ## Setup
 
@@ -128,9 +140,9 @@ docker compose up --build
 ```
 
 This builds the image and starts the FastAPI service on
-`http://localhost:8000`. The SQLite history is mounted from the host
-so predictions persist across restarts. (The desktop GUI is not built
-into the container — only the API.)
+`http://localhost:8000`. The SQLite file is mounted from the host so
+the prediction history sticks around between restarts. The desktop
+GUI is not in the container — only the API.
 
 ## Evaluate
 
@@ -165,13 +177,6 @@ tests/
 model_files/          saved model, encoder, scaler
 data/                 dataset
 ```
-
-## Note
-
-This is a class project for learning ML, not a medical tool. The model
-is trained on a public survey dataset and the predictions are not a
-diagnosis of anything. If you or someone you know is struggling, please
-talk to a professional.
 
 ## Author
 

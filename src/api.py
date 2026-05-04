@@ -44,22 +44,22 @@ class PredictionResponse(BaseModel):
 
 @app.get("/health")
 def health():
-    # Report whether the trained model is on disk
+    # Quick health check - also tells you if the trained model file is there
     model_loaded = (MODEL_DIR / "depression_model.pth").exists()
     return {"status": "ok", "model_loaded": model_loaded}
 
 
 @app.post("/predict", response_model=PredictionResponse)
 def make_prediction(payload: PredictionRequest):
-    # Build the dict shape the model expects from the API payload
+    # Turn the request into the dict shape predict() expects
     payload_dict = payload.model_dump()
     answers = {model_key: [payload_dict[api_key]] for model_key, api_key in FIELD_NAME_MAP.items()}
 
     try:
         probability = predict(answers) * 100
-    except Exception as exc:
+    except Exception:
         logger.exception("Prediction failed")
-        raise HTTPException(status_code=500, detail="Prediction failed") from exc
+        raise HTTPException(status_code=500, detail="Prediction failed")
 
     level = risk_level(probability)
     rid = str(uuid.uuid4())
@@ -81,6 +81,6 @@ def make_prediction(payload: PredictionRequest):
 
 @app.get("/predictions")
 def list_predictions(limit: int = 50):
-    # Cap the limit so a huge ?limit=999999 doesn't dump the whole table
+    # Don't let someone ask for thousands of rows
     limit = max(1, min(limit, 200))
     return get_predictions(limit=limit)

@@ -52,27 +52,27 @@ FONT_BTN = ("Segoe UI", 12, "bold")
 PX = 20
 GAP = 8
 
-# Per-risk-level display data: (color, icon, advice tip)
+# For each risk level: colour, emoji, and a short advice line
 RESULT_DISPLAY = {
     "high": (
         RED,
         "\U000026a0\U0000fe0f",
-        "This is a high risk score. Please consider talking to a counselor or therapist. "
-        "Try to maintain a regular sleep schedule, eat well, stay physically active, "
-        "and reach out to friends or family. You don't have to go through this alone.",
+        "Score came back high. Please think about talking to a counselor or "
+        "someone you trust. Sleep, food and a little bit of activity every "
+        "day really do help. You don't have to deal with this alone.",
     ),
     "moderate": (
         ORANGE,
         "\U0001f7e1",
-        "This is a moderate risk score. Pay attention to your mental health. "
-        "Make time for activities you enjoy, keep a consistent routine, "
-        "limit screen time before bed, and don't hesitate to talk to someone if you feel low.",
+        "Score is in the middle. Try to keep a steady routine, make time for "
+        "things you actually enjoy, and reach out to someone if you stay low "
+        "for too long.",
     ),
     "low": (
         GREEN,
         "\U00002705",
-        "Your risk score is low \u2014 that's great! Keep it up by staying socially connected, "
-        "exercising regularly, getting enough sleep, and managing stress through hobbies or mindfulness.",
+        "Score is low - that's a good sign. Keep your basics steady (sleep, "
+        "food, exercise, friends) and don't let stress pile up.",
     ),
 }
 
@@ -86,7 +86,8 @@ class DepressionApp:
         self.app.configure(fg_color=BG_DARK)
         self.app.after(0, lambda: self.app.state("zoomed"))
 
-        # Each answer is wrapped in a list so we can build a pandas DataFrame later
+        # Values are stored as 1-element lists because predict() wraps them
+        # into a pandas DataFrame
         self.answers = {
             "Gender": [None],
             "Age": [None],
@@ -108,7 +109,7 @@ class DepressionApp:
 
         self._build_ui()
 
-    # ---- callbacks ----
+    # Callbacks
 
     def _on_slider(self, value, key, text_var):
         text_var.set(str(int(value)))
@@ -117,7 +118,7 @@ class DepressionApp:
     def _on_combo(self, value, key):
         self.answers[key][0] = value
 
-    # ---- build the UI ----
+    # Build the UI
 
     def _build_ui(self):
         scroll = ctk.CTkScrollableFrame(self.app, fg_color=BG_DARK, corner_radius=0)
@@ -153,7 +154,7 @@ class DepressionApp:
             text_color=TEXT_DIM,
         ).pack(pady=(4, GAP))
 
-        # ---- Personal Info ----
+        # Personal info section
         ctk.CTkLabel(
             root, text="\U0001f464  Personal Info", font=FONT_SECTION, text_color=TEXT_MID
         ).pack(anchor="w", padx=PX, pady=(0, 3))
@@ -221,7 +222,7 @@ class DepressionApp:
         self.combo_gender.set("Select")
         self.combo_gender.pack(pady=(2, 0))
 
-        # ---- Lifestyle ----
+        # Lifestyle section
         ctk.CTkLabel(
             root, text="\U0001f34e  Lifestyle", font=FONT_SECTION, text_color=TEXT_MID
         ).pack(anchor="w", padx=PX, pady=(0, 3))
@@ -279,7 +280,7 @@ class DepressionApp:
         self.combo_sleep.set("Select")
         self.combo_sleep.pack(pady=(2, 0))
 
-        # ---- Stress & Satisfaction ----
+        # Stress and satisfaction section
         ctk.CTkLabel(
             root,
             text="\U0001f4ca  Stress & Satisfaction",
@@ -297,6 +298,8 @@ class DepressionApp:
             ("Financial Stress", "Financial Stress", self.financial_text, (2, 2)),
             ("Study Satisfaction", "Study Satisfaction", self.satisfaction_text, (2, 10)),
         ]
+        # Save the sliders so the Reset button can put them back later
+        self.slider_widgets = []
         for label_text, key, text_var, pady in slider_rows:
             row = ctk.CTkFrame(c3, fg_color="transparent")
             ctk.CTkLabel(
@@ -326,8 +329,9 @@ class DepressionApp:
                 row, textvariable=text_var, font=FONT_LABEL, text_color=ACCENT, width=20
             ).pack(side="left")
             row.pack(fill="x", padx=14, pady=pady)
+            self.slider_widgets.append((slider, text_var, key))
 
-        # ---- Mental Health History ----
+        # Mental health history section
         ctk.CTkLabel(
             root,
             text="\U0001f49c  Mental Health History",
@@ -368,7 +372,7 @@ class DepressionApp:
         )
         self.checkbox_family.pack(side="left")
 
-        # ---- Result section ----
+        # Result section (button + output)
         c5 = ctk.CTkFrame(
             root, fg_color=BG_CARD, corner_radius=10, border_width=1, border_color=BORDER
         )
@@ -395,7 +399,7 @@ class DepressionApp:
             btn_row,
             text="\U0001f4dc  View History",
             height=42,
-            width=160,
+            width=140,
             command=self._open_history,
             text_color=TEXT_BRIGHT,
             fg_color=BG_INPUT,
@@ -405,7 +409,23 @@ class DepressionApp:
             border_width=1,
             border_color=BORDER,
         )
-        self.btn_history.pack(side="left")
+        self.btn_history.pack(side="left", padx=(0, 8))
+
+        self.btn_reset = ctk.CTkButton(
+            btn_row,
+            text="\u21bb  Reset",
+            height=42,
+            width=110,
+            command=self._reset,
+            text_color=TEXT_DIM,
+            fg_color=BG_INPUT,
+            hover_color="#1a3a5c",
+            font=FONT_BTN,
+            corner_radius=10,
+            border_width=1,
+            border_color=BORDER,
+        )
+        self.btn_reset.pack(side="left")
 
         self.label_result = ctk.CTkLabel(
             c5,
@@ -414,6 +434,18 @@ class DepressionApp:
             text_color=TEXT_BRIGHT,
         )
         self.label_result.pack(pady=(2, 0))
+
+        # Progress bar that fills up with the depression probability
+        self.progress = ctk.CTkProgressBar(
+            c5,
+            width=440,
+            height=14,
+            fg_color=BG_INPUT,
+            progress_color=ACCENT,
+            corner_radius=7,
+        )
+        self.progress.set(0)
+        self.progress.pack(pady=(8, 0))
 
         self.label_tip = ctk.CTkLabel(
             c5,
@@ -425,10 +457,14 @@ class DepressionApp:
         )
         self.label_tip.pack(padx=20, pady=(4, 14))
 
-    # ---- prediction logic ----
+        # Hitting Enter from the text fields runs Calculate
+        self.entry_age.bind("<Return>", lambda e: self._calculate())
+        self.entry_study.bind("<Return>", lambda e: self._calculate())
+
+    # Prediction logic
 
     def _collect_inputs(self):
-        # Read widget values into self.answers. Returns False if anything is invalid.
+        # Read the widgets into self.answers. Return False if something is wrong.
         age_result = validate_age(self.entry_age.get())
         if not age_result.valid:
             self._show_error(age_result.error)
@@ -454,6 +490,7 @@ class DepressionApp:
         self.label_result.configure(text_color=RED)
         self.result_text.set(msg)
         self.tip_text.set("")
+        self.progress.set(0)
 
     def _show_result(self, probability):
         color, icon, tip = RESULT_DISPLAY[risk_level(probability)]
@@ -461,9 +498,38 @@ class DepressionApp:
         self.result_text.set(f"{icon}  Depression probability: {probability:.1f}%")
         self.label_tip.configure(text_color=TEXT_MID)
         self.tip_text.set(tip)
+        self.progress.configure(progress_color=color)
+        self.progress.set(probability / 100)
+
+    def _reset(self):
+        # Clear all the inputs and the result
+        self.entry_age.delete(0, "end")
+        self.entry_study.delete(0, "end")
+        self.combo_gender.set("Select")
+        self.combo_diet.set("Select")
+        self.combo_sleep.set("Select")
+        self.checkbox_suicidal.deselect()
+        self.checkbox_family.deselect()
+
+        # Put the sliders back to their default
+        slider_keys = set()
+        for slider, text_var, key in self.slider_widgets:
+            slider.set(SLIDER_DEFAULT)
+            text_var.set(str(int(SLIDER_DEFAULT)))
+            self.answers[key][0] = SLIDER_DEFAULT
+            slider_keys.add(key)
+
+        # Everything else gets cleared (None means "not answered yet")
+        for key in self.answers:
+            if key not in slider_keys:
+                self.answers[key][0] = None
+
+        self.result_text.set("")
+        self.tip_text.set("")
+        self.progress.set(0)
 
     def _calculate(self):
-        # Validate inputs, run the prediction, and show the result
+        # Run a prediction and show the result on screen
         if not self._collect_inputs():
             return
 
@@ -478,10 +544,10 @@ class DepressionApp:
             self._persist_prediction(result)
         except Exception:
             logger.exception("Prediction failed")
-            self._show_error("Prediction error - check logs for details.")
+            self._show_error("Something went wrong. Please try again.")
 
     def _persist_prediction(self, probability):
-        # Save the prediction to the DB. Errors here shouldn't break the UI.
+        # Save to the DB - if it fails we just log it, the UI keeps working
         record = {
             api_key: self.answers[model_key][0]
             for model_key, api_key in FIELD_NAME_MAP.items()

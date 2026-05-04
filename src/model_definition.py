@@ -29,7 +29,7 @@ from src.config import (
 
 logger = logging.getLogger(__name__)
 
-# Map model field names (used in self.answers / DataFrame columns) to API field names
+# Display name -> API/snake_case name. Used by the GUI and the API.
 FIELD_NAME_MAP = {
     "Gender": "gender",
     "Age": "age",
