@@ -1,0 +1,9 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Keep the SQLite history on the host so it survives restarts
+      - ./predictions.db:/app/predictions.db
+    restart: unless-stopped
