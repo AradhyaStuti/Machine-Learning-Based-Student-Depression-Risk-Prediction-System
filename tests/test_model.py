@@ -1,8 +1,16 @@
 # Tests for the model class, the saved files, and predict()
 
+import joblib
 import torch
 
-from src.config import INPUT_SIZE, MODEL_DIR
+from src.config import (
+    CATEGORICAL_COLUMNS,
+    DIET_OPTIONS,
+    GENDER_OPTIONS,
+    INPUT_SIZE,
+    MODEL_DIR,
+    SLEEP_OPTIONS,
+)
 from src.model_definition import DepressionModel, predict, risk_level
 
 MODEL_PATH = MODEL_DIR / "depression_model.pth"
@@ -42,6 +50,23 @@ class TestModelFiles:
         model.load_state_dict(torch.load(MODEL_PATH, weights_only=True))
         model.eval()
         assert model(torch.randn(1, INPUT_SIZE)).shape == (1, 2)
+
+    def test_saved_model_input_size_matches_config(self):
+        # Catches the case where the model on disk was trained with a
+        # different feature count than what INPUT_SIZE claims
+        state = torch.load(MODEL_PATH, weights_only=True)
+        assert state["fc1.weight"].shape[1] == INPUT_SIZE
+
+    def test_encoder_categories_match_options(self):
+        # The encoder must know exactly the values the GUI/API can send,
+        # otherwise unknown values silently become zero-vectors
+        encoder = joblib.load(ENCODER_PATH)
+        cats = dict(zip(CATEGORICAL_COLUMNS, encoder.categories_))
+        assert set(cats["Gender"]) == set(GENDER_OPTIONS)
+        assert set(cats["Sleep Duration"]) == set(SLEEP_OPTIONS)
+        assert set(cats["Dietary Habits"]) == set(DIET_OPTIONS)
+        assert set(cats["Have you ever had suicidal thoughts ?"]) == {"Yes", "No"}
+        assert set(cats["Family History of Mental Illness"]) == {"Yes", "No"}
 
 
 class TestPredict:

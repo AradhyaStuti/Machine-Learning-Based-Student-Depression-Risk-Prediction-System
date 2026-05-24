@@ -5,6 +5,7 @@ import uuid
 
 import customtkinter as ctk
 
+from src.config import DIET_OPTIONS, GENDER_OPTIONS, SLEEP_OPTIONS
 from src.database import get_predictions, save_prediction
 from src.model_definition import FIELD_NAME_MAP, predict, risk_level
 from src.validation import (
@@ -33,11 +34,6 @@ SLIDER_DEFAULT = 3.0
 SLIDER_MIN = 1
 SLIDER_MAX = 5
 SLIDER_STEPS = 4
-
-# Dropdown options
-DIET_OPTIONS = ["Healthy Diet", "Moderate Diet", "Unhealthy Diet"]
-SLEEP_OPTIONS = ["More than 8 hours", "7-8 hours", "5-6 hours", "Less than 5 hours"]
-GENDER_OPTIONS = ["Male", "Female"]
 
 # Fonts
 FONT_TITLE = ("Segoe UI", 18, "bold")
@@ -84,7 +80,9 @@ class DepressionApp:
         self.app = ctk.CTk()
         self.app.title("Student Depression Prediction")
         self.app.configure(fg_color=BG_DARK)
-        self.app.after(0, lambda: self.app.state("zoomed"))
+        # "zoomed" is the Windows full-window state. On Linux/macOS Tk
+        # raises TclError - fall back to a sensible default size.
+        self.app.after(0, self._maximize)
 
         # Values are stored as 1-element lists because predict() wraps them
         # into a pandas DataFrame
@@ -108,6 +106,12 @@ class DepressionApp:
         self.satisfaction_text = ctk.StringVar(value=str(int(SLIDER_DEFAULT)))
 
         self._build_ui()
+
+    def _maximize(self):
+        try:
+            self.app.state("zoomed")
+        except Exception:
+            self.app.geometry("980x720")
 
     # Callbacks
 

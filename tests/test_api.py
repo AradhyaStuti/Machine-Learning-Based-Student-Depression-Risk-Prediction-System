@@ -13,7 +13,7 @@ VALID_PAYLOAD = {
     "financial_stress": 3.0,
     "study_satisfaction": 3.0,
     "sleep_duration": "5-6 hours",
-    "dietary_habits": "Moderate Diet",
+    "dietary_habits": "Moderate",
     "suicidal_thoughts": "No",
     "family_history": "No",
 }
@@ -59,6 +59,18 @@ class TestPredict:
 
     def test_invalid_yes_no(self, client):
         bad = {**VALID_PAYLOAD, "suicidal_thoughts": "Maybe"}
+        assert client.post("/predict", json=bad).status_code == 422
+
+    def test_invalid_gender(self, client):
+        bad = {**VALID_PAYLOAD, "gender": "Other"}
+        assert client.post("/predict", json=bad).status_code == 422
+
+    def test_invalid_sleep_duration(self, client):
+        bad = {**VALID_PAYLOAD, "sleep_duration": "All day"}
+        assert client.post("/predict", json=bad).status_code == 422
+
+    def test_invalid_dietary_habits(self, client):
+        bad = {**VALID_PAYLOAD, "dietary_habits": "Vegan"}
         assert client.post("/predict", json=bad).status_code == 422
 
 

@@ -43,8 +43,8 @@ Built with PyTorch, scikit-learn, customtkinter, and FastAPI.
 | Academic Pressure | 1-5 |
 | Financial Stress | 1-5 |
 | Study Satisfaction | 1-5 |
-| Sleep Duration | More than 8 hours / 7-8 hours / 5-6 hours / Less than 5 hours |
-| Dietary Habits | Healthy / Moderate / Unhealthy |
+| Sleep Duration | More than 8 hours / 7-8 hours / 5-6 hours / Less than 5 hours / Others |
+| Dietary Habits | Healthy / Moderate / Unhealthy / Others |
 | Suicidal thoughts | Yes / No |
 | Family history of mental illness | Yes / No |
 
@@ -78,7 +78,10 @@ git clone https://github.com/AradhyaStuti/Machine-Learning-Based-Student-Depress
 cd Machine-Learning-Based-Student-Depression-Risk-Prediction-System
 
 python -m venv venv
+# On Windows:
 venv\Scripts\activate
+# On Mac/Linux:
+# source venv/bin/activate
 
 pip install -r requirements.txt
 ```
@@ -117,7 +120,7 @@ curl -X POST http://localhost:8000/predict \
     "financial_stress": 3,
     "study_satisfaction": 2,
     "sleep_duration": "5-6 hours",
-    "dietary_habits": "Moderate Diet",
+    "dietary_habits": "Moderate",
     "suicidal_thoughts": "No",
     "family_history": "No"
   }'

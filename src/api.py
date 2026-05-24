@@ -7,7 +7,7 @@ import uuid
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from src.config import MODEL_DIR
+from src.config import DIET_PATTERN, GENDER_PATTERN, MODEL_DIR, SLEEP_PATTERN
 from src.database import get_predictions, init_db, save_prediction
 from src.logging_config import setup_logging
 from src.model_definition import FIELD_NAME_MAP, predict, risk_level
@@ -24,14 +24,17 @@ def _startup():
 
 
 class PredictionRequest(BaseModel):
-    gender: str
+    # The string fields are validated against the same option lists the GUI
+    # uses (see src/config.py) - otherwise unknown categories would silently
+    # become zero-vectors at encode time and skew the prediction.
+    gender: str = Field(..., pattern=GENDER_PATTERN)
     age: float = Field(..., ge=18, le=34)
     study_hours: float = Field(..., ge=0, le=12)
     academic_pressure: float = Field(..., ge=1, le=5)
     financial_stress: float = Field(..., ge=1, le=5)
     study_satisfaction: float = Field(..., ge=1, le=5)
-    sleep_duration: str
-    dietary_habits: str
+    sleep_duration: str = Field(..., pattern=SLEEP_PATTERN)
+    dietary_habits: str = Field(..., pattern=DIET_PATTERN)
     suicidal_thoughts: str = Field(..., pattern=r"^(Yes|No)$")
     family_history: str = Field(..., pattern=r"^(Yes|No)$")
 
@@ -66,7 +69,7 @@ def make_prediction(payload: PredictionRequest):
 
     save_prediction(
         request_id=rid,
-        input_data=payload.model_dump(),
+        input_data=payload_dict,
         probability=round(probability, 2),
         risk_level=level,
     )
