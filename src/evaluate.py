@@ -29,6 +29,7 @@ from src.config import (
     TARGET_COLUMN,
     TRAIN_TEST_SPLIT,
 )
+from src.logging_config import setup_logging
 from src.model_definition import DepressionModel, add_interactions
 
 logger = logging.getLogger(__name__)
@@ -127,7 +128,7 @@ def _print_confusion_matrix(cm):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    setup_logging()
 
     nn_results = evaluate_model()
     print("\n=== Neural Network ===")
