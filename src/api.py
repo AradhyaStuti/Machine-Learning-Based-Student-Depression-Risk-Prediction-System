@@ -5,6 +5,7 @@ import logging
 import uuid
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from src.config import DIET_PATTERN, GENDER_PATTERN, MODEL_DIR, SLEEP_PATTERN
@@ -17,10 +18,37 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Student Depression Prediction API")
 
+# Open CORS so the API is callable from anywhere - it's a demo API, not a
+# private one. Tighten this if the API ever serves a single frontend.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
+
+
+DISCLAIMER = (
+    "This is a final-year class project, not a medical tool. "
+    "Predictions come from a public Kaggle survey dataset and are not "
+    "clinical advice. If you or someone you know is struggling, please "
+    "speak to a qualified professional."
+)
+
 
 @app.on_event("startup")
 def _startup():
     init_db()
+
+
+@app.get("/")
+def root():
+    # Landing endpoint - tells anyone hitting the bare URL what this is
+    return {
+        "name": "Student Depression Prediction API",
+        "disclaimer": DISCLAIMER,
+        "endpoints": ["/health", "/predict", "/predictions", "/docs"],
+    }
 
 
 class PredictionRequest(BaseModel):

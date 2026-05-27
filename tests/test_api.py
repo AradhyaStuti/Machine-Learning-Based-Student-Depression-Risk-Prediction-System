@@ -27,6 +27,15 @@ def client(tmp_path, monkeypatch):
         yield c
 
 
+class TestRoot:
+    def test_returns_name_and_disclaimer(self, client):
+        resp = client.get("/")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "name" in data and "disclaimer" in data
+        assert "medical" in data["disclaimer"].lower()
+
+
 class TestHealth:
     def test_returns_ok_with_model_status(self, client):
         resp = client.get("/health")
