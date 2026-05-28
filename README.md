@@ -1,3 +1,14 @@
+---
+title: Student Depression Prediction
+emoji: 🧠
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+---
+
 # Student Depression Risk Prediction System
 
 A machine learning project I built that tries to predict depression
