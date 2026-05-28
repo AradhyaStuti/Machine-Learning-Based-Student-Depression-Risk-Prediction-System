@@ -8,8 +8,12 @@ import gradio as gr
 
 from src.api import app as fastapi_app
 from src.config import DIET_OPTIONS, GENDER_OPTIONS, SLEEP_OPTIONS
-from src.database import clear_predictions, count_by_risk_level, get_predictions
+from src.database import clear_predictions, count_by_risk_level, get_predictions, init_db
 from src.model_definition import predict, risk_level
+
+# Make sure the predictions table exists before Gradio tries to read from it
+# (the FastAPI startup event fires later than the UI's initial render)
+init_db()
 
 # Colours from the desktop GUI - keeps the look consistent
 BG_DARK = "#0d1117"
@@ -104,8 +108,15 @@ def reset_form():
 
 def build_history_html():
     # Render a stats line + a card per past prediction
-    rows = get_predictions(limit=50)
-    counts = count_by_risk_level()
+    try:
+        rows = get_predictions(limit=50)
+        counts = count_by_risk_level()
+    except Exception:
+        return (
+            f"<div style='text-align:center;padding:30px;color:{TEXT_DIM};'>"
+            "Could not load history right now. Try the Refresh button below."
+            "</div>"
+        )
     total = sum(counts.values())
 
     if total == 0:
