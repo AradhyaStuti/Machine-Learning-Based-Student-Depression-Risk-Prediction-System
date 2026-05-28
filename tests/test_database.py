@@ -8,6 +8,7 @@ import pytest
 from src.database import (
     clear_predictions,
     count_by_risk_level,
+    delete_prediction,
     get_predictions,
     init_db,
     save_prediction,
@@ -70,3 +71,19 @@ class TestClearAndCount:
 
     def test_count_when_empty(self):
         assert count_by_risk_level() == {}
+
+    def test_delete_one_by_id(self):
+        save_prediction("a", {}, 10.0, "low")
+        save_prediction("b", {}, 80.0, "high")
+        rows = get_predictions()
+        # Delete the first row (highest id, since DESC ordering = newest first)
+        to_delete = rows[0]["id"]
+        delete_prediction(to_delete)
+        remaining = get_predictions()
+        assert len(remaining) == 1
+        assert remaining[0]["id"] != to_delete
+
+    def test_delete_nonexistent_id_is_a_noop(self):
+        save_prediction("only", {}, 10.0, "low")
+        delete_prediction(999999)  # not there
+        assert len(get_predictions()) == 1

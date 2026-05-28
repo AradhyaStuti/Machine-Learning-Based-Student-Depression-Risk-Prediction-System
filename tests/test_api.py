@@ -97,6 +97,17 @@ class TestPredictions:
         assert resp.json() == {"status": "cleared"}
         assert client.get("/predictions").json() == []
 
+    def test_delete_one_by_id(self, client):
+        client.post("/predict", json=VALID_PAYLOAD)
+        client.post("/predict", json=VALID_PAYLOAD)
+        history = client.get("/predictions").json()
+        target_id = history[0]["id"]
+        resp = client.delete(f"/predictions/{target_id}")
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "deleted", "id": target_id}
+        ids_after = [p["id"] for p in client.get("/predictions").json()]
+        assert target_id not in ids_after
+
     def test_stats_endpoint(self, client):
         # Empty stats first
         empty = client.get("/predictions/stats").json()

@@ -12,6 +12,7 @@ from src.config import DIET_PATTERN, GENDER_PATTERN, MODEL_DIR, SLEEP_PATTERN
 from src.database import (
     clear_predictions,
     count_by_risk_level,
+    delete_prediction,
     get_predictions,
     init_db,
     save_prediction,
@@ -109,6 +110,12 @@ def list_predictions(limit: int = 50):
 def delete_predictions():
     clear_predictions()
     return {"status": "cleared"}
+
+
+@app.delete("/predictions/{prediction_id}")
+def delete_one_prediction(prediction_id: int):
+    delete_prediction(prediction_id)
+    return {"status": "deleted", "id": prediction_id}
 
 
 @app.get("/predictions/stats")

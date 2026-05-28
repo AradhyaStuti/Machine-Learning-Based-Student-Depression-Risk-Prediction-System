@@ -68,6 +68,14 @@ def clear_predictions():
     conn.close()
 
 
+def delete_prediction(prediction_id):
+    # Remove a single prediction by its row id
+    conn = _connect()
+    conn.execute("DELETE FROM predictions WHERE id = ?", (int(prediction_id),))
+    conn.commit()
+    conn.close()
+
+
 def count_by_risk_level():
     # How many predictions per risk bucket (used for the stats card)
     conn = _connect()

@@ -4,15 +4,23 @@
 #
 # Run locally:  uvicorn app:app --host 0.0.0.0 --port 7860
 
+import uuid
+
 import gradio as gr
 
 from src.api import app as fastapi_app
 from src.config import DIET_OPTIONS, GENDER_OPTIONS, SLEEP_OPTIONS
-from src.database import clear_predictions, count_by_risk_level, get_predictions, init_db
-from src.model_definition import predict, risk_level
+from src.database import (
+    clear_predictions,
+    count_by_risk_level,
+    delete_prediction,
+    get_predictions,
+    init_db,
+    save_prediction,
+)
+from src.model_definition import FIELD_NAME_MAP, predict, risk_level
 
-# Make sure the predictions table exists before Gradio tries to read from it
-# (the FastAPI startup event fires later than the UI's initial render)
+# Make sure the predictions table exists before the Gradio UI reads from it
 init_db()
 
 # Colours from the desktop GUI - keeps the look consistent
@@ -52,21 +60,54 @@ RESULT_DISPLAY = {
         "food, exercise, friends) and don't let stress pile up.",
     ),
 }
-
 COLOR_BY_LEVEL = {"high": RED, "moderate": ORANGE, "low": GREEN}
+EMOJI_BY_LEVEL = {"high": "🔴", "moderate": "🟡", "low": "🟢"}
+
+# Sample profiles - shown in both the Examples block (clickable templates)
+# and seeded into the DB on first launch so History isn't empty on day one
+SAMPLE_PROFILES = [
+    {"gender": "Male",   "age": 22, "study_hours": 4,  "academic_pressure": 1,
+     "financial_stress": 1, "study_satisfaction": 5, "sleep_duration": "7-8 hours",
+     "dietary_habits": "Healthy",   "suicidal_thoughts": "No",  "family_history": "No"},
+    {"gender": "Female", "age": 24, "study_hours": 8,  "academic_pressure": 3,
+     "financial_stress": 3, "study_satisfaction": 3, "sleep_duration": "5-6 hours",
+     "dietary_habits": "Moderate",  "suicidal_thoughts": "No",  "family_history": "No"},
+    {"gender": "Male",   "age": 24, "study_hours": 12, "academic_pressure": 5,
+     "financial_stress": 5, "study_satisfaction": 1, "sleep_duration": "Less than 5 hours",
+     "dietary_habits": "Unhealthy", "suicidal_thoughts": "Yes", "family_history": "Yes"},
+]
+
+
+def _payload_to_answers(payload):
+    # Snake-case API dict -> the dict shape predict() expects
+    return {model_key: [payload[api_key]] for model_key, api_key in FIELD_NAME_MAP.items()}
+
+
+def seed_demo_predictions_if_empty():
+    # Run the three sample profiles once so the History tab has content
+    # on the very first visit. Skipped if any predictions already exist.
+    try:
+        if get_predictions(limit=1):
+            return
+        for payload in SAMPLE_PROFILES:
+            probability = predict(_payload_to_answers(payload)) * 100
+            save_prediction(
+                request_id=str(uuid.uuid4()),
+                input_data=payload,
+                probability=round(probability, 2),
+                risk_level=risk_level(probability),
+            )
+    except Exception:
+        # Best-effort: never crash startup over demo seeding
+        pass
+
+
+seed_demo_predictions_if_empty()
 
 
 def run_prediction(
-    gender,
-    age,
-    study_hours,
-    academic_pressure,
-    financial_stress,
-    study_satisfaction,
-    sleep_duration,
-    dietary_habits,
-    suicidal_thoughts,
-    family_history,
+    gender, age, study_hours, academic_pressure, financial_stress, study_satisfaction,
+    sleep_duration, dietary_habits, suicidal_thoughts, family_history,
 ):
     answers = {
         "Gender": [gender],
@@ -80,10 +121,21 @@ def run_prediction(
         "Have you ever had suicidal thoughts ?": ["Yes" if suicidal_thoughts else "No"],
         "Family History of Mental Illness": ["Yes" if family_history else "No"],
     }
-
     probability = predict(answers) * 100
     level = risk_level(probability)
     color, icon, tip = RESULT_DISPLAY[level]
+
+    # Persist this run so it shows up in the History tab too
+    try:
+        save_prediction(
+            request_id=str(uuid.uuid4()),
+            input_data={api_key: answers[model_key][0]
+                        for model_key, api_key in FIELD_NAME_MAP.items()},
+            probability=round(probability, 2),
+            risk_level=level,
+        )
+    except Exception:
+        pass
 
     return (
         f"<div class='result-card' style='border:1px solid {color};'>"
@@ -102,35 +154,20 @@ def run_prediction(
 
 
 def reset_form():
-    # Put every input back to its starting value
     return ("Male", 22, 8, 3, 3, 3, "7-8 hours", "Moderate", False, False, "")
 
 
-def build_history_html():
-    # Render a stats line + a card per past prediction
+def build_stats_html():
+    # Stats row at the top of the History tab
     try:
-        rows = get_predictions(limit=50)
         counts = count_by_risk_level()
     except Exception:
-        return (
-            f"<div style='text-align:center;padding:30px;color:{TEXT_DIM};'>"
-            "Could not load history right now. Try the Refresh button below."
-            "</div>"
-        )
+        return ""
     total = sum(counts.values())
-
-    if total == 0:
-        return (
-            f"<div style='text-align:center;padding:30px;color:{TEXT_DIM};'>"
-            "No predictions yet. Run one from the <b>Predict</b> tab first."
-            "</div>"
-        )
-
-    # Stats summary at the top
     high = counts.get("high", 0)
     moderate = counts.get("moderate", 0)
     low = counts.get("low", 0)
-    stats_html = (
+    return (
         f"<div class='stats-row'>"
         f"<div class='stat-card'><div class='stat-num'>{total}</div>"
         f"<div class='stat-label'>TOTAL</div></div>"
@@ -143,27 +180,63 @@ def build_history_html():
         f"</div>"
     )
 
-    # One card per row
-    cards = []
+
+def history_rows():
+    # Return rows for the Dataframe: [id, time, probability, risk]
+    try:
+        rows = get_predictions(limit=50)
+    except Exception:
+        return []
+    out = []
     for r in rows:
-        color = COLOR_BY_LEVEL.get(r["risk_level"], TEXT_BRIGHT)
-        cards.append(
-            f"<div class='history-card'>"
-            f"<div style='color:{color};font-size:18px;font-weight:700;'>"
-            f"{r['probability']:.1f}% &nbsp;·&nbsp; {r['risk_level'].upper()}"
-            f"</div>"
-            f"<div style='color:{TEXT_DIM};font-size:12px;margin-top:4px;'>"
-            f"{r['timestamp']}"
-            f"</div>"
-            f"</div>"
+        # Trim ISO timestamp to "YYYY-MM-DD HH:MM" for readability
+        ts = (r["timestamp"] or "").replace("T", " ").split(".")[0][:16]
+        level = r["risk_level"]
+        emoji = EMOJI_BY_LEVEL.get(level, "")
+        out.append([r["id"], ts, f"{r['probability']:.1f}%", f"{emoji} {level.upper()}"])
+    return out
+
+
+def refresh_history():
+    return build_stats_html(), history_rows()
+
+
+def on_history_row_select(evt: gr.SelectData, table):
+    # Capture the ID of the clicked row so the Delete-Selected button knows what to remove
+    if evt.index is None or not table:
+        return None, "<span style='color:" + TEXT_DIM + ";'>No row selected.</span>"
+    row_idx = evt.index[0] if isinstance(evt.index, list) else evt.index
+    try:
+        # table can be a list-of-lists or a DataFrame depending on Gradio version
+        if hasattr(table, "iloc"):
+            row_id = table.iloc[row_idx, 0]
+        else:
+            row_id = table[row_idx][0]
+    except Exception:
+        return None, "<span style='color:" + TEXT_DIM + ";'>Could not read that row.</span>"
+    return int(row_id), (
+        f"<span style='color:{ACCENT};'>Row #{int(row_id)} selected. "
+        f"Click <b>Delete Selected</b> to remove just this one.</span>"
+    )
+
+
+def delete_one(selected_id):
+    if selected_id is None:
+        stats, rows = refresh_history()
+        return stats, rows, None, (
+            f"<span style='color:{TEXT_DIM};'>Click a row in the table first.</span>"
         )
+    delete_prediction(int(selected_id))
+    stats, rows = refresh_history()
+    return stats, rows, None, (
+        f"<span style='color:{TEXT_DIM};'>Deleted row #{int(selected_id)}.</span>"
+    )
 
-    return stats_html + "<div class='history-list'>" + "".join(cards) + "</div>"
 
-
-def clear_history():
+def clear_all():
     clear_predictions()
-    return build_history_html()
+    stats, rows = refresh_history()
+    return stats, rows, None, f"<span style='color:{TEXT_DIM};'>History cleared.</span>"
 
 
 # CSS for the dark theme + hover/focus polish + history layout
@@ -215,11 +288,7 @@ button.secondary {{
     transition: background 0.15s ease, border-color 0.15s ease !important;
 }}
 button.secondary:hover {{ background: #1a3a5c !important; border-color: {ACCENT} !important; }}
-button.stop {{
-    background: {RED} !important;
-    color: #fff !important;
-    transition: background 0.15s ease !important;
-}}
+button.stop {{ background: {RED} !important; color: #fff !important; transition: background 0.15s ease !important; }}
 button.stop:hover {{ background: #c82a3a !important; }}
 .result-card {{
     text-align: center;
@@ -245,12 +314,7 @@ button.stop:hover {{ background: #c82a3a !important; }}
 .result-bar-fill {{ height: 100%; transition: width 0.4s ease-out; }}
 .result-tip {{ color: {TEXT_DIM}; font-size: 14px; max-width: 560px; margin: 0 auto; line-height: 1.45; }}
 
-/* Stats row + history cards */
-.stats-row {{
-    display: flex;
-    gap: 12px;
-    margin: 4px 0 14px 0;
-}}
+.stats-row {{ display: flex; gap: 12px; margin: 4px 0 14px 0; }}
 .stat-card {{
     flex: 1;
     background: {BG_CARD};
@@ -263,17 +327,7 @@ button.stop:hover {{ background: #c82a3a !important; }}
 .stat-card:hover {{ border-color: {BORDER_HOVER}; }}
 .stat-num {{ font-size: 24px; font-weight: 700; color: {TEXT_BRIGHT}; }}
 .stat-label {{ font-size: 11px; color: {TEXT_DIM}; letter-spacing: 1px; margin-top: 2px; }}
-.history-list {{ display: flex; flex-direction: column; gap: 8px; }}
-.history-card {{
-    background: {BG_CARD};
-    border: 1px solid {BORDER};
-    border-radius: 8px;
-    padding: 12px 14px;
-    transition: border-color 0.15s ease, transform 0.05s ease;
-}}
-.history-card:hover {{ border-color: {BORDER_HOVER}; }}
 
-/* Hide Gradio's built-in footer */
 footer {{ display: none !important; }}
 """
 
@@ -325,26 +379,57 @@ with gr.Blocks(title="Student Depression Prediction", css=CUSTOM_CSS, theme=gr.t
             ]
             gr.Examples(
                 examples=[
-                    ["Male",   22, 4,  1, 1, 5, "7-8 hours",         "Healthy",   False, False],
-                    ["Female", 24, 8,  3, 3, 3, "5-6 hours",         "Moderate",  False, False],
-                    ["Male",   24, 12, 5, 5, 1, "Less than 5 hours", "Unhealthy", True,  True],
+                    [p["gender"], p["age"], p["study_hours"],
+                     p["academic_pressure"], p["financial_stress"], p["study_satisfaction"],
+                     p["sleep_duration"], p["dietary_habits"],
+                     p["suicidal_thoughts"] == "Yes", p["family_history"] == "Yes"]
+                    for p in SAMPLE_PROFILES
                 ],
                 inputs=all_inputs,
                 label="Or try a sample profile (low / moderate / high risk)",
             )
 
         with gr.Tab("📜 History") as history_tab:
-            history_out = gr.HTML(value=build_history_html())
+            stats_html = gr.HTML(value=build_stats_html())
+            history_table = gr.Dataframe(
+                headers=["ID", "Time (UTC)", "Probability", "Risk"],
+                value=history_rows(),
+                interactive=False,
+                wrap=True,
+                row_count=(0, "dynamic"),
+            )
+            selection_msg = gr.HTML(
+                value=f"<span style='color:{TEXT_DIM};'>Click a row in the table to select it for deletion.</span>"
+            )
+            selected_id_state = gr.State(value=None)
             with gr.Row():
-                refresh_btn = gr.Button("↻ Refresh", variant="secondary")
-                clear_btn = gr.Button("🗑️ Clear All History", variant="stop")
+                refresh_btn = gr.Button("↻ Refresh", variant="secondary", scale=1)
+                delete_selected_btn = gr.Button(
+                    "🗑️ Delete Selected", variant="secondary", scale=1
+                )
+                clear_btn = gr.Button("🗑️ Clear All History", variant="stop", scale=1)
 
+    # Wire everything up
     submit.click(run_prediction, inputs=all_inputs, outputs=result_out)
-    submit.click(build_history_html, outputs=history_out)  # keep history tab in sync
+    submit.click(refresh_history, outputs=[stats_html, history_table])
     reset_btn.click(reset_form, inputs=None, outputs=all_inputs + [result_out])
-    refresh_btn.click(build_history_html, outputs=history_out)
-    clear_btn.click(clear_history, outputs=history_out)
-    history_tab.select(build_history_html, outputs=history_out)  # refresh on tab open
+
+    history_table.select(
+        on_history_row_select,
+        inputs=[history_table],
+        outputs=[selected_id_state, selection_msg],
+    )
+    refresh_btn.click(refresh_history, outputs=[stats_html, history_table])
+    delete_selected_btn.click(
+        delete_one,
+        inputs=[selected_id_state],
+        outputs=[stats_html, history_table, selected_id_state, selection_msg],
+    )
+    clear_btn.click(
+        clear_all,
+        outputs=[stats_html, history_table, selected_id_state, selection_msg],
+    )
+    history_tab.select(refresh_history, outputs=[stats_html, history_table])
 
 
 # Glue: serve the Gradio UI at "/" but keep all the FastAPI endpoints alive
