@@ -1,10 +1,8 @@
-# Web entry point for deployment (Hugging Face Spaces, Render, etc.)
+# Web app that gets served on Hugging Face / any docker host.
+# The Gradio form runs at "/" and the API endpoints (/health, /predict,
+# /predictions, /docs) sit on top of the same FastAPI instance.
 #
-# Serves both:
-#   - the Gradio UI at /  (so the bare URL shows the visual app)
-#   - the FastAPI endpoints at /health, /predict, /predictions, /docs
-#
-# Run locally with: uvicorn app:app --host 0.0.0.0 --port 7860
+# Run locally:  uvicorn app:app --host 0.0.0.0 --port 7860
 
 import gradio as gr
 
@@ -12,7 +10,7 @@ from src.api import app as fastapi_app
 from src.config import DIET_OPTIONS, GENDER_OPTIONS, SLEEP_OPTIONS
 from src.model_definition import predict, risk_level
 
-# Same palette as the desktop GUI
+# Colours from the desktop GUI - keeps the look consistent
 BG_DARK = "#0d1117"
 BG_CARD = "#161b22"
 BG_INPUT = "#1c2333"
@@ -24,7 +22,7 @@ BORDER = "#30363d"
 TEXT_BRIGHT = "#e6edf3"
 TEXT_DIM = "#7d8590"
 
-# Same per-risk-level advice as the desktop GUI
+# Per-risk-level advice, same wording as the desktop GUI
 RESULT_DISPLAY = {
     "high": (
         RED,
@@ -185,8 +183,7 @@ with gr.Blocks(title="Student Depression Prediction", css=CUSTOM_CSS, theme=gr.t
     )
 
 
-# Mount the Gradio app at "/" on top of the FastAPI app so a single ASGI app
-# serves both the UI and the API endpoints.
+# Glue: serve the Gradio UI at "/" but keep all the FastAPI endpoints alive
 app = gr.mount_gradio_app(fastapi_app, demo, path="/")
 
 
