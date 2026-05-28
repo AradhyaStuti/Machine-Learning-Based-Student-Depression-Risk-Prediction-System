@@ -228,7 +228,7 @@ class DepressionApp:
 
         # Lifestyle section
         ctk.CTkLabel(
-            root, text="\U0001f34e  Lifestyle", font=FONT_SECTION, text_color=TEXT_MID
+            root, text="\U0001f33f  Lifestyle", font=FONT_SECTION, text_color=TEXT_MID
         ).pack(anchor="w", padx=PX, pady=(0, 3))
 
         c2 = ctk.CTkFrame(
@@ -338,7 +338,7 @@ class DepressionApp:
         # Mental health history section
         ctk.CTkLabel(
             root,
-            text="\U0001f49c  Mental Health History",
+            text="\U0001f4ad  Mental Health History",
             font=FONT_SECTION,
             text_color=TEXT_MID,
         ).pack(anchor="w", padx=PX, pady=(0, 3))

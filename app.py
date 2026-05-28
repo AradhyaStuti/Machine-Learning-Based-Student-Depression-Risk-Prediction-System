@@ -131,7 +131,7 @@ with gr.Blocks(title="Student Depression Prediction", css=CUSTOM_CSS, theme=gr.t
             )
             gender_in = gr.Radio(choices=GENDER_OPTIONS, label="Gender", value="Male")
 
-    gr.Markdown("<div class='section-label'>🍎  LIFESTYLE</div>")
+    gr.Markdown("<div class='section-label'>🌿  LIFESTYLE</div>")
     with gr.Group(elem_classes="section-card"):
         with gr.Row():
             diet_in = gr.Dropdown(choices=DIET_OPTIONS, label="Dietary Habits", value="Moderate")
@@ -143,7 +143,7 @@ with gr.Blocks(title="Student Depression Prediction", css=CUSTOM_CSS, theme=gr.t
         financial_in = gr.Slider(1, 5, value=3, step=1, label="Financial Stress")
         satisfaction_in = gr.Slider(1, 5, value=3, step=1, label="Study Satisfaction")
 
-    gr.Markdown("<div class='section-label'>💜  MENTAL HEALTH HISTORY</div>")
+    gr.Markdown("<div class='section-label'>💭  MENTAL HEALTH HISTORY</div>")
     with gr.Group(elem_classes="section-card"):
         with gr.Row():
             suicidal_in = gr.Checkbox(label="Has had suicidal thoughts")
