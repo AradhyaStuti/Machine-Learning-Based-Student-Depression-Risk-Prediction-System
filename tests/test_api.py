@@ -88,3 +88,24 @@ class TestPredictions:
             client.post("/predict", json=VALID_PAYLOAD)
         history = client.get("/predictions?limit=99999").json()
         assert len(history) <= 200
+
+    def test_delete_clears_history(self, client):
+        client.post("/predict", json=VALID_PAYLOAD)
+        assert len(client.get("/predictions").json()) >= 1
+        resp = client.delete("/predictions")
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "cleared"}
+        assert client.get("/predictions").json() == []
+
+    def test_stats_endpoint(self, client):
+        # Empty stats first
+        empty = client.get("/predictions/stats").json()
+        assert empty == {"total": 0, "by_risk_level": {}}
+        # Now run two predictions
+        client.post("/predict", json=VALID_PAYLOAD)
+        client.post("/predict", json=VALID_PAYLOAD)
+        stats = client.get("/predictions/stats").json()
+        assert stats["total"] == 2
+        # All values must be valid risk levels
+        for level in stats["by_risk_level"]:
+            assert level in ("low", "moderate", "high")
