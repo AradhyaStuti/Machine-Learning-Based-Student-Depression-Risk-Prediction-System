@@ -1,13 +1,11 @@
 # Student Depression Prediction GUI (built with customtkinter)
 
 import logging
-import uuid
 
 import customtkinter as ctk
 
 from src.config import DIET_OPTIONS, GENDER_OPTIONS, SLEEP_OPTIONS
-from src.database import get_predictions, save_prediction
-from src.model_definition import FIELD_NAME_MAP, predict, risk_level
+from src.model_definition import predict, risk_level
 from src.validation import (
     all_fields_filled,
     validate_age,
@@ -389,7 +387,7 @@ class DepressionApp:
             btn_row,
             text="\U0001f50d  Calculate Results",
             height=42,
-            width=220,
+            width=240,
             command=self._calculate,
             text_color="#ffffff",
             fg_color=ACCENT,
@@ -398,22 +396,6 @@ class DepressionApp:
             corner_radius=10,
         )
         self.btn_calculate.pack(side="left", padx=(0, 8))
-
-        self.btn_history = ctk.CTkButton(
-            btn_row,
-            text="\U0001f4dc  View History",
-            height=42,
-            width=140,
-            command=self._open_history,
-            text_color=TEXT_BRIGHT,
-            fg_color=BG_INPUT,
-            hover_color="#1a3a5c",
-            font=FONT_BTN,
-            corner_radius=10,
-            border_width=1,
-            border_color=BORDER,
-        )
-        self.btn_history.pack(side="left", padx=(0, 8))
 
         self.btn_reset = ctk.CTkButton(
             btn_row,
@@ -545,87 +527,9 @@ class DepressionApp:
             result = predict(self.answers) * 100
             logger.info("Prediction result: %.2f%%", result)
             self._show_result(result)
-            self._persist_prediction(result)
         except Exception:
             logger.exception("Prediction failed")
             self._show_error("Something went wrong. Please try again.")
-
-    def _persist_prediction(self, probability):
-        # Save to the DB - if it fails we just log it, the UI keeps working
-        record = {
-            api_key: self.answers[model_key][0]
-            for model_key, api_key in FIELD_NAME_MAP.items()
-        }
-
-        try:
-            save_prediction(
-                request_id=str(uuid.uuid4()),
-                input_data=record,
-                probability=round(probability, 2),
-                risk_level=risk_level(probability),
-            )
-        except Exception:
-            logger.exception("Failed to save prediction (non-fatal)")
-
-    def _open_history(self):
-        # Open a small window showing the last 20 predictions
-        try:
-            rows = get_predictions(limit=20)
-        except Exception:
-            logger.exception("Could not load history")
-            self._show_error("Could not load history.")
-            return
-
-        win = ctk.CTkToplevel(self.app)
-        win.title("Prediction History")
-        win.geometry("520x460")
-        win.configure(fg_color=BG_DARK)
-
-        ctk.CTkLabel(
-            win,
-            text="\U0001f4dc  Recent Predictions",
-            font=FONT_TITLE,
-            text_color=TEXT_BRIGHT,
-        ).pack(pady=(14, 8))
-
-        if not rows:
-            ctk.CTkLabel(
-                win,
-                text="No predictions yet. Run one first!",
-                font=FONT_LABEL,
-                text_color=TEXT_DIM,
-            ).pack(pady=20)
-            return
-
-        scroll = ctk.CTkScrollableFrame(win, fg_color=BG_DARK)
-        scroll.pack(fill="both", expand=True, padx=14, pady=(0, 14))
-
-        for r in rows:
-            colors = {"high": RED, "moderate": ORANGE, "low": GREEN}
-            color = colors.get(r["risk_level"], TEXT_BRIGHT)
-
-            card = ctk.CTkFrame(
-                scroll,
-                fg_color=BG_CARD,
-                corner_radius=8,
-                border_width=1,
-                border_color=BORDER,
-            )
-            card.pack(fill="x", pady=4)
-
-            ctk.CTkLabel(
-                card,
-                text=f"{r['probability']:.1f}%   {r['risk_level'].upper()}",
-                font=FONT_RESULT,
-                text_color=color,
-            ).pack(anchor="w", padx=12, pady=(8, 0))
-
-            ctk.CTkLabel(
-                card,
-                text=r["timestamp"],
-                font=FONT_SMALL,
-                text_color=TEXT_DIM,
-            ).pack(anchor="w", padx=12, pady=(0, 8))
 
     def run(self):
         self.app.mainloop()

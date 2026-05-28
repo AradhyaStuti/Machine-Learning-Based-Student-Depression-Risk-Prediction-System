@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from src.config import DIET_PATTERN, GENDER_PATTERN, MODEL_DIR, SLEEP_PATTERN
-from src.database import get_predictions, init_db, save_prediction
 from src.logging_config import setup_logging
 from src.model_definition import FIELD_NAME_MAP, predict, risk_level
 
@@ -26,11 +25,6 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def _startup():
-    init_db()
 
 
 class PredictionRequest(BaseModel):
@@ -77,23 +71,9 @@ def make_prediction(payload: PredictionRequest):
     level = risk_level(probability)
     rid = str(uuid.uuid4())
 
-    save_prediction(
-        request_id=rid,
-        input_data=payload_dict,
-        probability=round(probability, 2),
-        risk_level=level,
-    )
-
     logger.info("Prediction: %.2f%% (%s)", probability, level)
     return PredictionResponse(
         probability=round(probability, 2),
         risk_level=level,
         request_id=rid,
     )
-
-
-@app.get("/predictions")
-def list_predictions(limit: int = 50):
-    # Don't let someone ask for thousands of rows
-    limit = max(1, min(limit, 200))
-    return get_predictions(limit=limit)

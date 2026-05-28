@@ -4,17 +4,11 @@
 #
 # Run locally:  uvicorn app:app --host 0.0.0.0 --port 7860
 
-import uuid
-
 import gradio as gr
 
 from src.api import app as fastapi_app
 from src.config import DIET_OPTIONS, GENDER_OPTIONS, SLEEP_OPTIONS
-from src.database import init_db, save_prediction
-from src.model_definition import FIELD_NAME_MAP, predict, risk_level
-
-# Make sure the predictions table exists before anything tries to save to it
-init_db()
+from src.model_definition import predict, risk_level
 
 # Colours from the desktop GUI - keeps the look consistent
 BG_DARK = "#0d1117"
@@ -74,18 +68,6 @@ def run_prediction(
     probability = predict(answers) * 100
     level = risk_level(probability)
     color, icon, tip = RESULT_DISPLAY[level]
-
-    # Save the prediction so the API and desktop GUI history can still see it
-    try:
-        save_prediction(
-            request_id=str(uuid.uuid4()),
-            input_data={api_key: answers[model_key][0]
-                        for model_key, api_key in FIELD_NAME_MAP.items()},
-            probability=round(probability, 2),
-            risk_level=level,
-        )
-    except Exception:
-        pass
 
     return (
         f"<div class='result-card' style='border:1px solid {color};'>"

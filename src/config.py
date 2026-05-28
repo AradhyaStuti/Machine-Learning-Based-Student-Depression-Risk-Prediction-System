@@ -1,6 +1,5 @@
 # Project paths, dataset columns, and training settings
 
-import os
 from pathlib import Path
 
 # Paths
@@ -8,10 +7,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODEL_DIR = PROJECT_ROOT / "model_files"
 DATA_DIR = PROJECT_ROOT / "data"
 DATA_PATH = DATA_DIR / "Student Depression Dataset.csv"
-
-# DB path can be overridden via APP_DB_PATH (used by docker-compose so the
-# sqlite file can live inside a named volume).
-DB_PATH = Path(os.environ.get("APP_DB_PATH", str(PROJECT_ROOT / "predictions.db")))
 
 # Model
 INPUT_SIZE = 23

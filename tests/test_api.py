@@ -20,9 +20,7 @@ VALID_PAYLOAD = {
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    # Point the DB at a temp file for tests
-    monkeypatch.setattr("src.database.DB_PATH", tmp_path / "test.db")
+def client():
     with TestClient(app) as c:
         yield c
 
@@ -72,19 +70,3 @@ class TestPredict:
     def test_invalid_dietary_habits(self, client):
         bad = {**VALID_PAYLOAD, "dietary_habits": "Vegan"}
         assert client.post("/predict", json=bad).status_code == 422
-
-
-class TestPredictions:
-    def test_predict_then_retrieve_history(self, client):
-        resp = client.post("/predict", json=VALID_PAYLOAD)
-        rid = resp.json()["request_id"]
-        history = client.get("/predictions").json()
-        matching = [p for p in history if p["request_id"] == rid]
-        assert len(matching) == 1
-
-    def test_limit_is_clamped(self, client):
-        # Even with a huge limit, the response shouldn't exceed the cap
-        for _ in range(3):
-            client.post("/predict", json=VALID_PAYLOAD)
-        history = client.get("/predictions?limit=99999").json()
-        assert len(history) <= 200

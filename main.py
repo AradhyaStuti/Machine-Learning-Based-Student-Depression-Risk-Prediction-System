@@ -3,7 +3,6 @@
 import sys
 
 from src.config import MODEL_DIR
-from src.database import init_db
 from src.GUI import initialize
 from src.logging_config import setup_logging
 
@@ -21,7 +20,6 @@ def main():
         print("Train the model first or copy the files into model_files/.")
         sys.exit(1)
 
-    init_db()
     initialize()
 
 

@@ -3,12 +3,4 @@ services:
     build: .
     ports:
       - "8000:8000"
-    environment:
-      # Put the SQLite file in the named volume below so predictions persist
-      APP_DB_PATH: /data/predictions.db
-    volumes:
-      - prediction_data:/data
     restart: unless-stopped
-
-volumes:
-  prediction_data:

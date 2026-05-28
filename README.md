@@ -140,17 +140,98 @@ Run the desktop application:
 python main.py
 ```
 
+<<<<<<< HEAD
 The API can be run separately using the FastAPI application in `src/api.py`.
 
 ## Dataset
+=======
+## Run the API
+>>>>>>> 67625b9 (remove all history and database code, predict-only)
 
 The project uses the Student Depression Dataset from Kaggle, with around 28,000 student records covering demographic, academic, lifestyle, and mental-health-related factors.
 
 ## Limitations
 
+<<<<<<< HEAD
 This model should not be used as a clinical diagnosis. It was trained on a specific dataset, so its performance may not generalize to different student populations or real-world clinical settings.
 
 The recommendations shown by the application are simple rule-based messages based on the predicted risk category.
+=======
+- `GET /health` — health check (also reports if the model file is on disk)
+- `POST /predict` — run a prediction
+
+Example request:
+
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "gender": "Male",
+    "age": 22,
+    "study_hours": 8,
+    "academic_pressure": 4,
+    "financial_stress": 3,
+    "study_satisfaction": 2,
+    "sleep_duration": "5-6 hours",
+    "dietary_habits": "Moderate",
+    "suicidal_thoughts": "No",
+    "family_history": "No"
+  }'
+```
+
+Response:
+
+```json
+{
+  "probability": 72.4,
+  "risk_level": "high",
+  "request_id": "..."
+}
+```
+
+## Run with Docker
+
+```bash
+docker compose up --build
+```
+
+This builds the image and starts the FastAPI service on
+`http://localhost:8000`. The desktop GUI is not in the container —
+only the API.
+
+## Evaluate
+
+```bash
+python -m src.evaluate
+```
+
+Prints accuracy, precision, recall, F1, ROC-AUC, and a labelled
+confusion matrix for the neural network, plus the logistic regression
+baseline for comparison.
+
+## Tests
+
+```bash
+pytest
+```
+
+## Project layout
+
+```
+main.py               launches the GUI
+src/
+  GUI.py              desktop UI (customtkinter)
+  api.py              FastAPI app
+  config.py           paths, dataset columns, training settings
+  evaluate.py         model metrics + LR baseline
+  logging_config.py   basic logging
+  model_definition.py PyTorch model, training loop, and predict()
+  validation.py       input validation for the GUI
+tests/
+model_files/          saved model, encoder, scaler
+data/                 dataset
+```
+>>>>>>> 67625b9 (remove all history and database code, predict-only)
 
 ## Author
 
