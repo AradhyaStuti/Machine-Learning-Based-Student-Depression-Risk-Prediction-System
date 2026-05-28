@@ -208,15 +208,6 @@ with gr.Blocks(title="Student Depression Prediction", css=CUSTOM_CSS, theme=gr.t
         academic_in, financial_in, satisfaction_in,
         sleep_in, diet_in, suicidal_in, family_in,
     ]
-    gr.Examples(
-        examples=[
-            ["Male",   22, 4,  1, 1, 5, "7-8 hours",         "Healthy",   False, False],
-            ["Female", 24, 8,  3, 3, 3, "5-6 hours",         "Moderate",  False, False],
-            ["Male",   24, 12, 5, 5, 1, "Less than 5 hours", "Unhealthy", True,  True],
-        ],
-        inputs=all_inputs,
-        label="Or try a sample profile (low / moderate / high risk)",
-    )
 
     submit.click(run_prediction, inputs=all_inputs, outputs=result_out)
     reset_btn.click(reset_form, inputs=None, outputs=all_inputs + [result_out])
