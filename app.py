@@ -10,17 +10,10 @@ import gradio as gr
 
 from src.api import app as fastapi_app
 from src.config import DIET_OPTIONS, GENDER_OPTIONS, SLEEP_OPTIONS
-from src.database import (
-    clear_predictions,
-    count_by_risk_level,
-    delete_prediction,
-    get_predictions,
-    init_db,
-    save_prediction,
-)
+from src.database import init_db, save_prediction
 from src.model_definition import FIELD_NAME_MAP, predict, risk_level
 
-# Make sure the predictions table exists before the Gradio UI reads from it
+# Make sure the predictions table exists before anything tries to save to it
 init_db()
 
 # Colours from the desktop GUI - keeps the look consistent
@@ -60,49 +53,6 @@ RESULT_DISPLAY = {
         "food, exercise, friends) and don't let stress pile up.",
     ),
 }
-COLOR_BY_LEVEL = {"high": RED, "moderate": ORANGE, "low": GREEN}
-EMOJI_BY_LEVEL = {"high": "🔴", "moderate": "🟡", "low": "🟢"}
-
-# Sample profiles - shown in both the Examples block (clickable templates)
-# and seeded into the DB on first launch so History isn't empty on day one
-SAMPLE_PROFILES = [
-    {"gender": "Male",   "age": 22, "study_hours": 4,  "academic_pressure": 1,
-     "financial_stress": 1, "study_satisfaction": 5, "sleep_duration": "7-8 hours",
-     "dietary_habits": "Healthy",   "suicidal_thoughts": "No",  "family_history": "No"},
-    {"gender": "Female", "age": 24, "study_hours": 8,  "academic_pressure": 3,
-     "financial_stress": 3, "study_satisfaction": 3, "sleep_duration": "5-6 hours",
-     "dietary_habits": "Moderate",  "suicidal_thoughts": "No",  "family_history": "No"},
-    {"gender": "Male",   "age": 24, "study_hours": 12, "academic_pressure": 5,
-     "financial_stress": 5, "study_satisfaction": 1, "sleep_duration": "Less than 5 hours",
-     "dietary_habits": "Unhealthy", "suicidal_thoughts": "Yes", "family_history": "Yes"},
-]
-
-
-def _payload_to_answers(payload):
-    # Snake-case API dict -> the dict shape predict() expects
-    return {model_key: [payload[api_key]] for model_key, api_key in FIELD_NAME_MAP.items()}
-
-
-def seed_demo_predictions_if_empty():
-    # Run the three sample profiles once so the History tab has content
-    # on the very first visit. Skipped if any predictions already exist.
-    try:
-        if get_predictions(limit=1):
-            return
-        for payload in SAMPLE_PROFILES:
-            probability = predict(_payload_to_answers(payload)) * 100
-            save_prediction(
-                request_id=str(uuid.uuid4()),
-                input_data=payload,
-                probability=round(probability, 2),
-                risk_level=risk_level(probability),
-            )
-    except Exception:
-        # Best-effort: never crash startup over demo seeding
-        pass
-
-
-seed_demo_predictions_if_empty()
 
 
 def run_prediction(
@@ -125,7 +75,7 @@ def run_prediction(
     level = risk_level(probability)
     color, icon, tip = RESULT_DISPLAY[level]
 
-    # Persist this run so it shows up in the History tab too
+    # Save the prediction so the API and desktop GUI history can still see it
     try:
         save_prediction(
             request_id=str(uuid.uuid4()),
@@ -157,67 +107,6 @@ def reset_form():
     return ("Male", 22, 8, 3, 3, 3, "7-8 hours", "Moderate", False, False, "")
 
 
-def build_stats_html():
-    # Stats row at the top of the History tab
-    try:
-        counts = count_by_risk_level()
-    except Exception:
-        return ""
-    total = sum(counts.values())
-    high = counts.get("high", 0)
-    moderate = counts.get("moderate", 0)
-    low = counts.get("low", 0)
-    return (
-        f"<div class='stats-row'>"
-        f"<div class='stat-card'><div class='stat-num'>{total}</div>"
-        f"<div class='stat-label'>TOTAL</div></div>"
-        f"<div class='stat-card'><div class='stat-num' style='color:{GREEN};'>{low}</div>"
-        f"<div class='stat-label'>LOW</div></div>"
-        f"<div class='stat-card'><div class='stat-num' style='color:{ORANGE};'>{moderate}</div>"
-        f"<div class='stat-label'>MODERATE</div></div>"
-        f"<div class='stat-card'><div class='stat-num' style='color:{RED};'>{high}</div>"
-        f"<div class='stat-label'>HIGH</div></div>"
-        f"</div>"
-    )
-
-
-def history_rows():
-    # Return rows for the Dataframe: [id, time, probability, risk]
-    try:
-        rows = get_predictions(limit=50)
-    except Exception:
-        return []
-    out = []
-    for r in rows:
-        # Trim ISO timestamp to "YYYY-MM-DD HH:MM" for readability
-        ts = (r["timestamp"] or "").replace("T", " ").split(".")[0][:16]
-        level = r["risk_level"]
-        emoji = EMOJI_BY_LEVEL.get(level, "")
-        out.append([r["id"], ts, f"{r['probability']:.1f}%", f"{emoji} {level.upper()}"])
-    return out
-
-
-def refresh_history():
-    return build_stats_html(), history_rows()
-
-
-def delete_by_id(prediction_id):
-    # Delete one row by the ID the user typed. Empty / 0 / unknown = no-op.
-    if prediction_id is None or int(prediction_id) <= 0:
-        stats, rows = refresh_history()
-        return stats, rows, None
-    delete_prediction(int(prediction_id))
-    stats, rows = refresh_history()
-    return stats, rows, None
-
-
-def clear_all():
-    clear_predictions()
-    stats, rows = refresh_history()
-    return stats, rows, None
-
-
-# CSS for the dark theme + hover/focus polish + history layout
 CUSTOM_CSS = f"""
 .gradio-container {{
     background: {BG_DARK} !important;
@@ -266,8 +155,6 @@ button.secondary {{
     transition: background 0.15s ease, border-color 0.15s ease !important;
 }}
 button.secondary:hover {{ background: #1a3a5c !important; border-color: {ACCENT} !important; }}
-button.stop {{ background: {RED} !important; color: #fff !important; transition: background 0.15s ease !important; }}
-button.stop:hover {{ background: #c82a3a !important; }}
 .result-card {{
     text-align: center;
     padding: 18px;
@@ -292,20 +179,6 @@ button.stop:hover {{ background: #c82a3a !important; }}
 .result-bar-fill {{ height: 100%; transition: width 0.4s ease-out; }}
 .result-tip {{ color: {TEXT_DIM}; font-size: 14px; max-width: 560px; margin: 0 auto; line-height: 1.45; }}
 
-.stats-row {{ display: flex; gap: 12px; margin: 4px 0 14px 0; }}
-.stat-card {{
-    flex: 1;
-    background: {BG_CARD};
-    border: 1px solid {BORDER};
-    border-radius: 10px;
-    padding: 14px 8px;
-    text-align: center;
-    transition: border-color 0.15s ease;
-}}
-.stat-card:hover {{ border-color: {BORDER_HOVER}; }}
-.stat-num {{ font-size: 24px; font-weight: 700; color: {TEXT_BRIGHT}; }}
-.stat-label {{ font-size: 11px; color: {TEXT_DIM}; letter-spacing: 1px; margin-top: 2px; }}
-
 footer {{ display: none !important; }}
 """
 
@@ -315,100 +188,56 @@ with gr.Blocks(title="Student Depression Prediction", css=CUSTOM_CSS, theme=gr.t
         gr.Markdown("# 🧠 Student Depression Risk Prediction")
     gr.Markdown("<div id='subtitle'>Fill in the details below to estimate depression risk</div>")
 
-    with gr.Tabs():
-        with gr.Tab("🔍 Predict"):
-            gr.Markdown("<div class='section-label'>👤  PERSONAL INFO</div>")
-            with gr.Group(elem_classes="section-card"):
-                with gr.Row():
-                    age_in = gr.Number(label="Age (18-34)", value=22, minimum=18, maximum=34, precision=0)
-                    study_in = gr.Number(
-                        label="Work/Study Hours (0-12)", value=8, minimum=0, maximum=12, precision=0
-                    )
-                    gender_in = gr.Radio(choices=GENDER_OPTIONS, label="Gender", value="Male")
-
-            gr.Markdown("<div class='section-label'>🌿  LIFESTYLE</div>")
-            with gr.Group(elem_classes="section-card"):
-                with gr.Row():
-                    diet_in = gr.Dropdown(choices=DIET_OPTIONS, label="Dietary Habits", value="Moderate")
-                    sleep_in = gr.Dropdown(choices=SLEEP_OPTIONS, label="Sleep Duration", value="7-8 hours")
-
-            gr.Markdown("<div class='section-label'>📊  STRESS & SATISFACTION</div>")
-            with gr.Group(elem_classes="section-card"):
-                academic_in = gr.Slider(1, 5, value=3, step=1, label="Academic Pressure")
-                financial_in = gr.Slider(1, 5, value=3, step=1, label="Financial Stress")
-                satisfaction_in = gr.Slider(1, 5, value=3, step=1, label="Study Satisfaction")
-
-            gr.Markdown("<div class='section-label'>💭  MENTAL HEALTH HISTORY</div>")
-            with gr.Group(elem_classes="section-card"):
-                with gr.Row():
-                    suicidal_in = gr.Checkbox(label="Has had suicidal thoughts")
-                    family_in = gr.Checkbox(label="Family history of depression")
-
-            with gr.Group(elem_classes="section-card"):
-                with gr.Row():
-                    submit = gr.Button("🔍 Calculate Result", variant="primary", size="lg", scale=2)
-                    reset_btn = gr.Button("↻ Reset", variant="secondary", size="lg", scale=1)
-                result_out = gr.HTML()
-
-            all_inputs = [
-                gender_in, age_in, study_in,
-                academic_in, financial_in, satisfaction_in,
-                sleep_in, diet_in, suicidal_in, family_in,
-            ]
-            gr.Examples(
-                examples=[
-                    [p["gender"], p["age"], p["study_hours"],
-                     p["academic_pressure"], p["financial_stress"], p["study_satisfaction"],
-                     p["sleep_duration"], p["dietary_habits"],
-                     p["suicidal_thoughts"] == "Yes", p["family_history"] == "Yes"]
-                    for p in SAMPLE_PROFILES
-                ],
-                inputs=all_inputs,
-                label="Or try a sample profile (low / moderate / high risk)",
+    gr.Markdown("<div class='section-label'>👤  PERSONAL INFO</div>")
+    with gr.Group(elem_classes="section-card"):
+        with gr.Row():
+            age_in = gr.Number(label="Age (18-34)", value=22, minimum=18, maximum=34, precision=0)
+            study_in = gr.Number(
+                label="Work/Study Hours (0-12)", value=8, minimum=0, maximum=12, precision=0
             )
+            gender_in = gr.Radio(choices=GENDER_OPTIONS, label="Gender", value="Male")
 
-        with gr.Tab("📜 History") as history_tab:
-            stats_html = gr.HTML(value=build_stats_html())
-            history_table = gr.Dataframe(
-                headers=["ID", "Time (UTC)", "Probability", "Risk"],
-                value=history_rows(),
-                interactive=False,
-                wrap=True,
-            )
-            with gr.Group(elem_classes="section-card"):
-                gr.Markdown(
-                    f"<span style='color:{TEXT_DIM};font-size:13px;'>"
-                    "To delete one row, type its <b>ID</b> from the table above "
-                    "and press <b>Delete by ID</b>."
-                    "</span>"
-                )
-                with gr.Row():
-                    delete_id_in = gr.Number(
-                        label="ID", precision=0, value=None, scale=1,
-                    )
-                    delete_one_btn = gr.Button(
-                        "🗑️ Delete by ID", variant="secondary", scale=2,
-                    )
-            with gr.Row():
-                refresh_btn = gr.Button("↻ Refresh", variant="secondary", scale=1)
-                clear_btn = gr.Button("🗑️ Clear All History", variant="stop", scale=1)
+    gr.Markdown("<div class='section-label'>🌿  LIFESTYLE</div>")
+    with gr.Group(elem_classes="section-card"):
+        with gr.Row():
+            diet_in = gr.Dropdown(choices=DIET_OPTIONS, label="Dietary Habits", value="Moderate")
+            sleep_in = gr.Dropdown(choices=SLEEP_OPTIONS, label="Sleep Duration", value="7-8 hours")
 
-    # Wire everything up
+    gr.Markdown("<div class='section-label'>📊  STRESS & SATISFACTION</div>")
+    with gr.Group(elem_classes="section-card"):
+        academic_in = gr.Slider(1, 5, value=3, step=1, label="Academic Pressure")
+        financial_in = gr.Slider(1, 5, value=3, step=1, label="Financial Stress")
+        satisfaction_in = gr.Slider(1, 5, value=3, step=1, label="Study Satisfaction")
+
+    gr.Markdown("<div class='section-label'>💭  MENTAL HEALTH HISTORY</div>")
+    with gr.Group(elem_classes="section-card"):
+        with gr.Row():
+            suicidal_in = gr.Checkbox(label="Has had suicidal thoughts")
+            family_in = gr.Checkbox(label="Family history of depression")
+
+    with gr.Group(elem_classes="section-card"):
+        with gr.Row():
+            submit = gr.Button("🔍 Calculate Result", variant="primary", size="lg", scale=2)
+            reset_btn = gr.Button("↻ Reset", variant="secondary", size="lg", scale=1)
+        result_out = gr.HTML()
+
+    all_inputs = [
+        gender_in, age_in, study_in,
+        academic_in, financial_in, satisfaction_in,
+        sleep_in, diet_in, suicidal_in, family_in,
+    ]
+    gr.Examples(
+        examples=[
+            ["Male",   22, 4,  1, 1, 5, "7-8 hours",         "Healthy",   False, False],
+            ["Female", 24, 8,  3, 3, 3, "5-6 hours",         "Moderate",  False, False],
+            ["Male",   24, 12, 5, 5, 1, "Less than 5 hours", "Unhealthy", True,  True],
+        ],
+        inputs=all_inputs,
+        label="Or try a sample profile (low / moderate / high risk)",
+    )
+
     submit.click(run_prediction, inputs=all_inputs, outputs=result_out)
-    submit.click(refresh_history, outputs=[stats_html, history_table])
     reset_btn.click(reset_form, inputs=None, outputs=all_inputs + [result_out])
-
-    refresh_btn.click(refresh_history, outputs=[stats_html, history_table])
-    delete_one_btn.click(
-        delete_by_id,
-        inputs=[delete_id_in],
-        outputs=[stats_html, history_table, delete_id_in],
-    )
-    clear_btn.click(
-        clear_all,
-        outputs=[stats_html, history_table, delete_id_in],
-    )
-    history_tab.select(refresh_history, outputs=[stats_html, history_table])
 
 
 # Glue: serve the Gradio UI at "/" but keep all the FastAPI endpoints alive

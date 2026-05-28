@@ -9,14 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from src.config import DIET_PATTERN, GENDER_PATTERN, MODEL_DIR, SLEEP_PATTERN
-from src.database import (
-    clear_predictions,
-    count_by_risk_level,
-    delete_prediction,
-    get_predictions,
-    init_db,
-    save_prediction,
-)
+from src.database import get_predictions, init_db, save_prediction
 from src.logging_config import setup_logging
 from src.model_definition import FIELD_NAME_MAP, predict, risk_level
 
@@ -104,22 +97,3 @@ def list_predictions(limit: int = 50):
     # Don't let someone ask for thousands of rows
     limit = max(1, min(limit, 200))
     return get_predictions(limit=limit)
-
-
-@app.delete("/predictions")
-def delete_predictions():
-    clear_predictions()
-    return {"status": "cleared"}
-
-
-@app.delete("/predictions/{prediction_id}")
-def delete_one_prediction(prediction_id: int):
-    delete_prediction(prediction_id)
-    return {"status": "deleted", "id": prediction_id}
-
-
-@app.get("/predictions/stats")
-def predictions_stats():
-    # Total prediction count + per-risk-level breakdown
-    counts = count_by_risk_level()
-    return {"total": sum(counts.values()), "by_risk_level": counts}

@@ -58,29 +58,3 @@ def get_predictions(limit=50):
     ).fetchall()
     conn.close()
     return [dict(row) for row in rows]
-
-
-def clear_predictions():
-    # Wipe every row in the predictions table
-    conn = _connect()
-    conn.execute("DELETE FROM predictions")
-    conn.commit()
-    conn.close()
-
-
-def delete_prediction(prediction_id):
-    # Remove a single prediction by its row id
-    conn = _connect()
-    conn.execute("DELETE FROM predictions WHERE id = ?", (int(prediction_id),))
-    conn.commit()
-    conn.close()
-
-
-def count_by_risk_level():
-    # How many predictions per risk bucket (used for the stats card)
-    conn = _connect()
-    rows = conn.execute(
-        "SELECT risk_level, COUNT(*) AS n FROM predictions GROUP BY risk_level"
-    ).fetchall()
-    conn.close()
-    return {row["risk_level"]: row["n"] for row in rows}

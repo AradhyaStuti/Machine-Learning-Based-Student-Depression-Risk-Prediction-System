@@ -5,14 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.database import (
-    clear_predictions,
-    count_by_risk_level,
-    delete_prediction,
-    get_predictions,
-    init_db,
-    save_prediction,
-)
+from src.database import get_predictions, init_db, save_prediction
 
 
 @pytest.fixture(autouse=True)
@@ -51,39 +44,3 @@ class TestSavePrediction:
     def test_timestamp_is_set(self):
         save_prediction("req-ts", {}, 0.0, "low")
         assert get_predictions(limit=1)[0]["timestamp"] is not None
-
-
-class TestClearAndCount:
-    def test_clear_empties_the_table(self):
-        save_prediction("req-1", {}, 0.0, "low")
-        save_prediction("req-2", {}, 0.0, "high")
-        assert len(get_predictions()) == 2
-        clear_predictions()
-        assert get_predictions() == []
-
-    def test_count_by_risk_level(self):
-        save_prediction("a", {}, 10.0, "low")
-        save_prediction("b", {}, 50.0, "moderate")
-        save_prediction("c", {}, 80.0, "high")
-        save_prediction("d", {}, 85.0, "high")
-        counts = count_by_risk_level()
-        assert counts == {"low": 1, "moderate": 1, "high": 2}
-
-    def test_count_when_empty(self):
-        assert count_by_risk_level() == {}
-
-    def test_delete_one_by_id(self):
-        save_prediction("a", {}, 10.0, "low")
-        save_prediction("b", {}, 80.0, "high")
-        rows = get_predictions()
-        # Delete the first row (highest id, since DESC ordering = newest first)
-        to_delete = rows[0]["id"]
-        delete_prediction(to_delete)
-        remaining = get_predictions()
-        assert len(remaining) == 1
-        assert remaining[0]["id"] != to_delete
-
-    def test_delete_nonexistent_id_is_a_noop(self):
-        save_prediction("only", {}, 10.0, "low")
-        delete_prediction(999999)  # not there
-        assert len(get_predictions()) == 1
