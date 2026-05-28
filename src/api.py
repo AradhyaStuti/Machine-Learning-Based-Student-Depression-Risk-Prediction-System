@@ -28,27 +28,9 @@ app.add_middleware(
 )
 
 
-DISCLAIMER = (
-    "This is a final-year class project, not a medical tool. "
-    "Predictions come from a public Kaggle survey dataset and are not "
-    "clinical advice. If you or someone you know is struggling, please "
-    "speak to a qualified professional."
-)
-
-
 @app.on_event("startup")
 def _startup():
     init_db()
-
-
-@app.get("/")
-def root():
-    # Landing endpoint - tells anyone hitting the bare URL what this is
-    return {
-        "name": "Student Depression Prediction API",
-        "disclaimer": DISCLAIMER,
-        "endpoints": ["/health", "/predict", "/predictions", "/docs"],
-    }
 
 
 class PredictionRequest(BaseModel):

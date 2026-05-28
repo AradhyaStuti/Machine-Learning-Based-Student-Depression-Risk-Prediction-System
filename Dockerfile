@@ -1,5 +1,7 @@
-# Build a small image for running the FastAPI service.
-# (The GUI is desktop-only and not meant to run inside the container.)
+# Container that serves both the Gradio web UI (at /) and the FastAPI
+# endpoints (at /health, /predict, /predictions, /docs).
+# The desktop tkinter GUI is not in the container - that one is run with
+# `python main.py` locally.
 
 FROM python:3.12-slim
 
@@ -13,6 +15,7 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY app.py ./
 COPY src ./src
 COPY data ./data
 COPY model_files ./model_files
@@ -23,4 +26,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fs http://localhost:${PORT:-7860}/health || exit 1
 
 # Shell form so ${PORT} is expanded at runtime (Render/Railway/Fly/HF set $PORT)
-CMD uvicorn src.api:app --host 0.0.0.0 --port ${PORT:-7860}
+CMD uvicorn app:app --host 0.0.0.0 --port ${PORT:-7860}
