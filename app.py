@@ -214,15 +214,8 @@ button.secondary:hover {{
     margin: 0 auto;
     line-height: 1.45;
 }}
-.footer-note {{
-    color: {TEXT_DIM};
-    font-size: 12px;
-    text-align: center;
-    margin-top: 12px;
-    line-height: 1.5;
-}}
-.footer-note a {{ color: {ACCENT}; text-decoration: none; transition: color 0.15s ease; }}
-.footer-note a:hover {{ color: {ACCENT_HOVER}; text-decoration: underline; }}
+/* Hide Gradio's built-in footer ("Use via API / Built with Gradio / Settings") */
+footer {{ display: none !important; }}
 """
 
 
@@ -279,18 +272,6 @@ with gr.Blocks(title="Student Depression Prediction", css=CUSTOM_CSS, theme=gr.t
         ],
         inputs=all_inputs,
         label="Or try a sample profile (low / moderate / high risk)",
-    )
-
-    gr.Markdown(
-        "<p class='footer-note'>"
-        "This is a class project, not a medical tool. "
-        "If you or someone you know is struggling, please speak to a qualified professional."
-        "<br><br>"
-        "API endpoints: "
-        "<a href='/docs' target='_blank'>/docs</a> &middot; "
-        "<a href='/health' target='_blank'>/health</a> &middot; "
-        "<a href='/predictions' target='_blank'>/predictions</a>"
-        "</p>"
     )
 
     submit.click(run_prediction, inputs=all_inputs, outputs=result_out)
