@@ -201,42 +201,20 @@ def refresh_history():
     return build_stats_html(), history_rows()
 
 
-def on_history_row_select(evt: gr.SelectData, table):
-    # Capture the ID of the clicked row so the Delete-Selected button knows what to remove
-    if evt.index is None or not table:
-        return None, "<span style='color:" + TEXT_DIM + ";'>No row selected.</span>"
-    row_idx = evt.index[0] if isinstance(evt.index, list) else evt.index
-    try:
-        # table can be a list-of-lists or a DataFrame depending on Gradio version
-        if hasattr(table, "iloc"):
-            row_id = table.iloc[row_idx, 0]
-        else:
-            row_id = table[row_idx][0]
-    except Exception:
-        return None, "<span style='color:" + TEXT_DIM + ";'>Could not read that row.</span>"
-    return int(row_id), (
-        f"<span style='color:{ACCENT};'>Row #{int(row_id)} selected. "
-        f"Click <b>Delete Selected</b> to remove just this one.</span>"
-    )
-
-
-def delete_one(selected_id):
-    if selected_id is None:
+def delete_by_id(prediction_id):
+    # Delete one row by the ID the user typed. Empty / 0 / unknown = no-op.
+    if prediction_id is None or int(prediction_id) <= 0:
         stats, rows = refresh_history()
-        return stats, rows, None, (
-            f"<span style='color:{TEXT_DIM};'>Click a row in the table first.</span>"
-        )
-    delete_prediction(int(selected_id))
+        return stats, rows, None
+    delete_prediction(int(prediction_id))
     stats, rows = refresh_history()
-    return stats, rows, None, (
-        f"<span style='color:{TEXT_DIM};'>Deleted row #{int(selected_id)}.</span>"
-    )
+    return stats, rows, None
 
 
 def clear_all():
     clear_predictions()
     stats, rows = refresh_history()
-    return stats, rows, None, f"<span style='color:{TEXT_DIM};'>History cleared.</span>"
+    return stats, rows, None
 
 
 # CSS for the dark theme + hover/focus polish + history layout
@@ -396,17 +374,23 @@ with gr.Blocks(title="Student Depression Prediction", css=CUSTOM_CSS, theme=gr.t
                 value=history_rows(),
                 interactive=False,
                 wrap=True,
-                row_count=(0, "dynamic"),
             )
-            selection_msg = gr.HTML(
-                value=f"<span style='color:{TEXT_DIM};'>Click a row in the table to select it for deletion.</span>"
-            )
-            selected_id_state = gr.State(value=None)
+            with gr.Group(elem_classes="section-card"):
+                gr.Markdown(
+                    f"<span style='color:{TEXT_DIM};font-size:13px;'>"
+                    "To delete one row, type its <b>ID</b> from the table above "
+                    "and press <b>Delete by ID</b>."
+                    "</span>"
+                )
+                with gr.Row():
+                    delete_id_in = gr.Number(
+                        label="ID", precision=0, value=None, scale=1,
+                    )
+                    delete_one_btn = gr.Button(
+                        "🗑️ Delete by ID", variant="secondary", scale=2,
+                    )
             with gr.Row():
                 refresh_btn = gr.Button("↻ Refresh", variant="secondary", scale=1)
-                delete_selected_btn = gr.Button(
-                    "🗑️ Delete Selected", variant="secondary", scale=1
-                )
                 clear_btn = gr.Button("🗑️ Clear All History", variant="stop", scale=1)
 
     # Wire everything up
@@ -414,20 +398,15 @@ with gr.Blocks(title="Student Depression Prediction", css=CUSTOM_CSS, theme=gr.t
     submit.click(refresh_history, outputs=[stats_html, history_table])
     reset_btn.click(reset_form, inputs=None, outputs=all_inputs + [result_out])
 
-    history_table.select(
-        on_history_row_select,
-        inputs=[history_table],
-        outputs=[selected_id_state, selection_msg],
-    )
     refresh_btn.click(refresh_history, outputs=[stats_html, history_table])
-    delete_selected_btn.click(
-        delete_one,
-        inputs=[selected_id_state],
-        outputs=[stats_html, history_table, selected_id_state, selection_msg],
+    delete_one_btn.click(
+        delete_by_id,
+        inputs=[delete_id_in],
+        outputs=[stats_html, history_table, delete_id_in],
     )
     clear_btn.click(
         clear_all,
-        outputs=[stats_html, history_table, selected_id_state, selection_msg],
+        outputs=[stats_html, history_table, delete_id_in],
     )
     history_tab.select(refresh_history, outputs=[stats_html, history_table])
 
