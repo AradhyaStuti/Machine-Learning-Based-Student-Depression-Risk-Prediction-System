@@ -1,197 +1,159 @@
----
-title: Student Depression Prediction
-emoji: 🧠
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-app_port: 7860
-pinned: false
-license: mit
----
-
 # Student Depression Risk Prediction System
 
-A machine learning project I built that tries to predict depression
-risk in students from things like sleep, study hours, and stress.
-Along with the predicted probability the app also shows a short,
-risk-level-aware advice message — so it's not just a number, you
-also get a small bit of guidance.
+## Overview
 
-There's a desktop GUI for entering inputs, and a small REST API so the
-same model can be called from somewhere else (or from a container).
+The Student Depression Risk Prediction System is a machine learning application designed to estimate the likelihood of depression among students based on academic, lifestyle, and personal factors. The objective of the project is to demonstrate how data-driven approaches can be used to analyze mental health indicators and provide meaningful insights.
 
-## Preview
+The system predicts a depression risk score and classifies users into Low, Moderate, or High Risk categories. In addition to the prediction, the application provides brief recommendations tailored to the identified risk level.
 
-![GUI screenshot](images/interface_preview.png)
+The project consists of:
 
-## How it works
+* A desktop application built using CustomTkinter
+* A FastAPI-based REST API
+* A PyTorch machine learning model
+* SQLite-based prediction history storage
 
-You fill in 10 fields. The inputs get one-hot encoded and scaled, I
-add three interaction features on top of the numerical ones, and the
-whole thing goes through a small neural net (3 fully connected layers
-with dropout 0.3). The output is a probability and a risk bucket —
-low (<40%), moderate (40-70%), or high (>=70%).
+---
 
-The GUI doesn't just dump a number at you — based on the risk bucket
-it also shows a short, colour-coded message with simple advice (sleep
-schedule, exercise, talking to someone, etc.). For high risk it
-specifically suggests reaching out to a counsellor or therapist. The
-messages live in `RESULT_DISPLAY` in `src/GUI.py` if you want to
-tweak them.
+## Problem Statement
 
-For training I use Adam with a learning-rate scheduler and early
-stopping on the training loss.
+Students often experience challenges related to academic pressure, financial stress, sleep patterns, and overall well-being. These factors can contribute significantly to mental health concerns. This project aims to analyze such factors and estimate depression risk using machine learning techniques.
 
-Built with PyTorch, scikit-learn, customtkinter, and FastAPI.
+The system serves as an educational and analytical tool for exploring predictive modeling in the mental health domain.
 
-### Inputs
+---
 
-| Field | Type |
-|---|---|
-| Gender | Male / Female |
-| Age | 18-34 |
-| Work / Study Hours | 0-12 |
-| Academic Pressure | 1-5 |
-| Financial Stress | 1-5 |
-| Study Satisfaction | 1-5 |
-| Sleep Duration | More than 8 hours / 7-8 hours / 5-6 hours / Less than 5 hours / Others |
-| Dietary Habits | Healthy / Moderate / Unhealthy / Others |
-| Suicidal thoughts | Yes / No |
-| Family history of mental illness | Yes / No |
+## Features
+
+* Depression risk prediction based on student-related attributes
+* Risk categorization into Low, Moderate, and High levels
+* Recommendation messages corresponding to the predicted risk level
+* Desktop graphical user interface for data entry and predictions
+* REST API for external integrations
+* Prediction history management using SQLite
+* Docker support for API deployment
+
+---
+
+## Input Features
+
+The model uses the following inputs:
+
+| Feature            | Description                      |
+| ------------------ | -------------------------------- |
+| Gender             | Male / Female                    |
+| Age                | Student age                      |
+| Work/Study Hours   | Daily study duration             |
+| Academic Pressure  | Academic stress level            |
+| Financial Stress   | Financial stress level           |
+| Study Satisfaction | Satisfaction with studies        |
+| Sleep Duration     | Average sleep duration           |
+| Dietary Habits     | Quality of dietary habits        |
+| Suicidal Thoughts  | Presence of suicidal thoughts    |
+| Family History     | Family history of mental illness |
+
+---
+
+## Machine Learning Pipeline
+
+The prediction workflow includes:
+
+1. Data preprocessing and validation
+2. One-hot encoding of categorical features
+3. Feature scaling
+4. Feature engineering through interaction features
+5. Prediction using a neural network model
+
+### Model Architecture
+
+The neural network consists of:
+
+* Three fully connected layers
+* ReLU activation functions
+* Dropout regularization (0.3)
+
+### Training Strategy
+
+The model is trained using:
+
+* Adam Optimizer
+* Learning Rate Scheduler
+* Early Stopping
+
+---
 
 ## Dataset
 
-Public Student Depression Dataset from Kaggle (~28k rows).
+The model was trained using the Student Depression Dataset available on Kaggle, containing approximately 28,000 records.
 
-![dataset](images/dataset_head.png)
+The dataset includes demographic, academic, lifestyle, and mental health-related attributes that are used to predict depression risk.
 
-## Results
+---
 
-On a 20% held-out test split:
+## Model Performance
 
-| Metric | Neural Net | Logistic Regression (baseline) |
-|---|---|---|
-| Accuracy | 0.85 | 0.85 |
-| F1 | 0.87 | 0.87 |
-| ROC-AUC | 0.92 | 0.92 |
+Performance was evaluated on a 20% held-out test dataset.
 
-One thing I noticed while testing: a plain logistic regression on the
-same features does basically as well as the neural net. The dataset
-seems mostly linearly separable, so the deeper model doesn't really
-buy much here. I kept the NN anyway since the project is about
-learning, but the LR baseline is in `src/evaluate.py` so you can see
-the comparison yourself.
+| Metric   | Neural Network | Logistic Regression |
+| -------- | -------------- | ------------------- |
+| Accuracy | 0.85           | 0.85                |
+| F1 Score | 0.87           | 0.87                |
+| ROC-AUC  | 0.92           | 0.92                |
 
-## Setup
+The Logistic Regression baseline achieved performance comparable to the Neural Network model, indicating that the dataset is largely linearly separable. The neural network was retained primarily for experimentation and learning purposes.
 
-```bash
-git clone https://github.com/AradhyaStuti/Machine-Learning-Based-Student-Depression-Risk-Prediction-System.git
-cd Machine-Learning-Based-Student-Depression-Risk-Prediction-System
+---
 
-python -m venv venv
-# On Windows:
-venv\Scripts\activate
-# On Mac/Linux:
-# source venv/bin/activate
+## Technology Stack
 
-pip install -r requirements.txt
-```
+* Python
+* PyTorch
+* Scikit-Learn
+* FastAPI
+* CustomTkinter
+* SQLite
+* Docker
 
-## Run the GUI
+---
 
-```bash
-python main.py
-```
+## Project Structure
 
-The GUI also has a "View History" button that shows the last few
-predictions saved in the local SQLite DB.
+```text
+main.py               Launches the desktop application
 
-## Run the API
-
-```bash
-uvicorn src.api:app --reload
-```
-
-Endpoints:
-
-- `GET /health` — health check (also reports if the model file is on disk)
-- `POST /predict` — run a prediction
-- `GET /predictions` — recent predictions saved in the SQLite DB
-
-Example request:
-
-```bash
-curl -X POST http://localhost:8000/predict \
-  -H "Content-Type: application/json" \
-  -d '{
-    "gender": "Male",
-    "age": 22,
-    "study_hours": 8,
-    "academic_pressure": 4,
-    "financial_stress": 3,
-    "study_satisfaction": 2,
-    "sleep_duration": "5-6 hours",
-    "dietary_habits": "Moderate",
-    "suicidal_thoughts": "No",
-    "family_history": "No"
-  }'
-```
-
-Response:
-
-```json
-{
-  "probability": 72.4,
-  "risk_level": "high",
-  "request_id": "..."
-}
-```
-
-## Run with Docker
-
-```bash
-docker compose up --build
-```
-
-This builds the image and starts the FastAPI service on
-`http://localhost:8000`. The SQLite file is mounted from the host so
-the prediction history sticks around between restarts. The desktop
-GUI is not in the container — only the API.
-
-## Evaluate
-
-```bash
-python -m src.evaluate
-```
-
-Prints accuracy, precision, recall, F1, ROC-AUC, and a labelled
-confusion matrix for the neural network, plus the logistic regression
-baseline for comparison.
-
-## Tests
-
-```bash
-pytest
-```
-
-## Project layout
-
-```
-main.py               launches the GUI
 src/
-  GUI.py              desktop UI (customtkinter)
-  api.py              FastAPI app
-  config.py           paths, dataset columns, training settings
-  database.py         SQLite store for prediction history
-  evaluate.py         model metrics + LR baseline
-  logging_config.py   basic logging
-  model_definition.py PyTorch model, training loop, and predict()
-  validation.py       input validation for the GUI
+├── GUI.py              User Interface
+├── api.py              FastAPI application
+├── config.py           Configuration settings
+├── database.py         SQLite database operations
+├── evaluate.py         Model evaluation and baseline comparison
+├── logging_config.py   Logging configuration
+├── model_definition.py Neural network architecture and training
+├── validation.py       Input validation
+
 tests/
-model_files/          saved model, encoder, scaler
-data/                 dataset
+model_files/
+data/
 ```
+
+---
+
+## Learning Outcomes
+
+This project provided practical experience in:
+
+* Data preprocessing and feature engineering
+* Neural network development using PyTorch
+* Model evaluation and comparison
+* REST API development with FastAPI
+* Database integration using SQLite
+* Containerization using Docker
+* End-to-end machine learning application development
+
+---
 
 ## Author
 
-Aradhya Stuti — [github.com/AradhyaStuti](https://github.com/AradhyaStuti)
+**Aradhya Stuti**
+
+This project was developed to explore the application of machine learning techniques in mental health risk assessment while gaining hands-on experience with model development, deployment, and software engineering practices.
