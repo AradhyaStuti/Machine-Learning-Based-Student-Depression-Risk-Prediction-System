@@ -19,3 +19,5 @@ build/
 .idea/
 .vscode/
 *.swp
+*.sqlite
+*.sqlite3
