@@ -177,13 +177,6 @@ The Gradio interface will be available at:
 ```text
 http://localhost:7860
 ```
-
-FastAPI's interactive API documentation will be available at:
-
-```text
-http://localhost:7860/docs
-```
-
 ### 5. Run with Docker
 
 ```bash
