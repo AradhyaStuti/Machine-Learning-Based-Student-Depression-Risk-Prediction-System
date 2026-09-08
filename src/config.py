@@ -7,7 +7,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODEL_DIR = PROJECT_ROOT / "model_files"
 DATA_DIR = PROJECT_ROOT / "data"
 DATA_PATH = DATA_DIR / "Student Depression Dataset.csv"
-
+DB_PATH = PROJECT_ROOT / "predictions.db"
 # Model
 INPUT_SIZE = 23
 
