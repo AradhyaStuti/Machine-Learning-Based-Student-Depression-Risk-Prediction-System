@@ -1,39 +1,20 @@
 # Student Depression Risk Prediction System
 
-## Overview
+A machine learning application that predicts depression risk among students using academic, lifestyle, and personal factors.
 
-The Student Depression Risk Prediction System is a machine learning application designed to estimate the likelihood of depression among students based on academic, lifestyle, and personal factors. The objective of the project is to demonstrate how data-driven approaches can be used to analyze mental health indicators and provide meaningful insights.
+I initially focused on training and evaluating the models, then extended the project into a small application with a desktop interface, REST API, prediction history, and Docker support.
 
-The system predicts a depression risk score and classifies users into Low, Moderate, or High Risk categories. In addition to the prediction, the application provides brief recommendations tailored to the identified risk level.
+> **Note:** This project is for educational purposes only. It is not a medical diagnostic tool.
 
-The project consists of:
+## What it does
 
-* A desktop application built using CustomTkinter
-* A FastAPI-based REST API
-* A PyTorch machine learning model
-* SQLite-based prediction history storage
+The system takes student-related inputs and predicts a depression risk score. The result is grouped into:
 
----
+* Low Risk
+* Moderate Risk
+* High Risk
 
-## Problem Statement
-
-Students often experience challenges related to academic pressure, financial stress, sleep patterns, and overall well-being. These factors can contribute significantly to mental health concerns. This project aims to analyze such factors and estimate depression risk using machine learning techniques.
-
-The system serves as an educational and analytical tool for exploring predictive modeling in the mental health domain.
-
----
-
-## Features
-
-* Depression risk prediction based on student-related attributes
-* Risk categorization into Low, Moderate, and High levels
-* Recommendation messages corresponding to the predicted risk level
-* Desktop graphical user interface for data entry and predictions
-* REST API for external integrations
-* Prediction history management using SQLite
-* Docker support for API deployment
-
----
+The application also displays a short recommendation based on the predicted risk level.
 
 ## Input Features
 
@@ -52,108 +33,127 @@ The model uses the following inputs:
 | Suicidal Thoughts  | Presence of suicidal thoughts    |
 | Family History     | Family history of mental illness |
 
----
+## Machine Learning
 
-## Machine Learning Pipeline
+I used Logistic Regression as a baseline and a small PyTorch neural network for comparison.
 
-The prediction workflow includes:
+### Preprocessing
 
-1. Data preprocessing and validation
-2. One-hot encoding of categorical features
-3. Feature scaling
-4. Feature engineering through interaction features
-5. Prediction using a neural network model
+The data pipeline includes:
 
-### Model Architecture
+* One-hot encoding for categorical features
+* Scaling of numerical features
+* Interaction features
+* Train-test splitting
 
-The neural network consists of:
+### Neural Network
 
-* Three fully connected layers
-* ReLU activation functions
-* Dropout regularization (0.3)
+The neural network uses:
 
-### Training Strategy
+* Fully connected layers
+* ReLU activation
+* Dropout (0.3)
+* Adam optimizer
+* Learning-rate scheduling
+* Early stopping
 
-The model is trained using:
+## Results
 
-* Adam Optimizer
-* Learning Rate Scheduler
-* Early Stopping
-
----
-
-## Dataset
-
-The model was trained using the Student Depression Dataset available on Kaggle, containing approximately 28,000 records.
-
-The dataset includes demographic, academic, lifestyle, and mental health-related attributes that are used to predict depression risk.
-
----
-
-## Model Performance
-
-Performance was evaluated on a 20% held-out test dataset.
+The models were evaluated on a held-out 20% test set.
 
 | Metric   | Neural Network | Logistic Regression |
-| -------- | -------------- | ------------------- |
-| Accuracy | 0.85           | 0.85                |
-| F1 Score | 0.87           | 0.87                |
-| ROC-AUC  | 0.92           | 0.92                |
+| -------- | -------------: | ------------------: |
+| Accuracy |           0.85 |                0.85 |
+| F1 Score |           0.87 |                0.87 |
+| ROC-AUC  |           0.92 |                0.92 |
 
-The Logistic Regression baseline achieved performance comparable to the Neural Network model, indicating that the dataset is largely linearly separable. The neural network was retained primarily for experimentation and learning purposes.
+Both models gave almost identical results, so the neural network did not offer a clear advantage over Logistic Regression on this dataset. I kept the neural network as part of the project to experiment with PyTorch and compare it with a simpler baseline.
 
----
+## Application
 
-## Technology Stack
+The trained model is connected to a desktop application built with CustomTkinter.
 
-* Python
-* PyTorch
-* Scikit-Learn
-* FastAPI
-* CustomTkinter
-* SQLite
-* Docker
+The application allows users to:
 
----
+* Enter the required student information
+* Get a depression risk prediction
+* View the predicted probability and risk category
+* View the recommendation associated with the result
+* Access previous predictions
+
+The project also includes a FastAPI service that exposes the prediction functionality through a REST API.
+
+Prediction history is stored locally using SQLite.
 
 ## Project Structure
 
 ```text
-main.py               Launches the desktop application
-
-src/
-├── GUI.py              User Interface
-├── api.py              FastAPI application
-├── config.py           Configuration settings
-├── database.py         SQLite database operations
-├── evaluate.py         Model evaluation and baseline comparison
-├── logging_config.py   Logging configuration
-├── model_definition.py Neural network architecture and training
-├── validation.py       Input validation
-
-tests/
-model_files/
-data/
+main.py
+│
+├── src/
+│   ├── GUI.py              # Desktop interface
+│   ├── api.py              # FastAPI application
+│   ├── config.py           # Configuration
+│   ├── database.py         # SQLite operations
+│   ├── evaluate.py         # Model evaluation and comparison
+│   ├── logging_config.py   # Logging setup
+│   ├── model_definition.py # Neural network and training
+│   └── validation.py       # Input validation
+│
+├── tests/                  # Project tests
+├── model_files/            # Saved model files
+├── data/                   # Dataset
+│
+├── Dockerfile
+├── docker-compose.yml
+└── requirements.txt
 ```
 
----
+## Tech Stack
 
-## Learning Outcomes
+* **Python**
+* **PyTorch**
+* **Scikit-learn**
+* **FastAPI**
+* **CustomTkinter**
+* **SQLite**
+* **Docker**
 
-This project provided practical experience in:
+## Running the Project
 
-* Data preprocessing and feature engineering
-* Neural network development using PyTorch
-* Model evaluation and comparison
-* REST API development with FastAPI
-* Database integration using SQLite
-* Containerization using Docker
-* End-to-end machine learning application development
+Clone the repository:
 
----
+```bash
+git clone https://github.com/AradhyaStuti/Machine-Learning-Based-Student-Depression-Risk-Prediction-System.git
+cd Machine-Learning-Based-Student-Depression-Risk-Prediction-System
+```
+
+Install the dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Run the desktop application:
+
+```bash
+python main.py
+```
+
+The API can be run separately using the FastAPI application in `src/api.py`.
+
+## Dataset
+
+The project uses the Student Depression Dataset from Kaggle, with around 28,000 student records covering demographic, academic, lifestyle, and mental-health-related factors.
+
+## Limitations
+
+This model should not be used as a clinical diagnosis. It was trained on a specific dataset, so its performance may not generalize to different student populations or real-world clinical settings.
+
+The recommendations shown by the application are simple rule-based messages based on the predicted risk category.
 
 ## Author
 
 **Aradhya Stuti**
 
-This project was developed to explore the application of machine learning techniques in mental health risk assessment while gaining hands-on experience with model development, deployment, and software engineering practices.
+GitHub: [@AradhyaStuti](https://github.com/AradhyaStuti)
