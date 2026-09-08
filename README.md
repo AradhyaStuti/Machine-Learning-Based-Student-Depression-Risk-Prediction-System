@@ -1,7 +1,9 @@
 # Student Depression Risk Prediction System
 
 A machine learning application that predicts depression risk among students using academic, lifestyle, and personal factors.
+
 LIVE: https://aradhyastuti-student-depression-prediction.hf.space/
+
 I started this project by training and comparing different models. I then turned it into an application with a desktop GUI, a web interface, a REST API, prediction history, and Docker support.
 
 > **Note:** This project is for educational purposes only. It is not a medical diagnostic tool.
